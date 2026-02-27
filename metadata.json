@@ -1,0 +1,7 @@
+{
+  "name": "Splitbill",
+  "description": "Split bills easily by taking a photo of your receipt.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
