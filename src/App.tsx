@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas';
-import { Camera, Upload, Users, Receipt, Check, Plus, Trash2, ChevronRight, ChevronLeft, Loader2, Share2, SplitSquareHorizontal, X, RefreshCw, AlertCircle, Download, Image as ImageIcon } from 'lucide-react';
+import { Camera, Upload, Users, Receipt, Check, Plus, Trash2, ChevronRight, ChevronLeft, Loader2, Share2, SplitSquareHorizontal, X, RefreshCw, AlertCircle, Download, Image as ImageIcon, Dog, Cat, Rabbit, Bird, Fish, Turtle, Snail, Bug, Sun, Moon } from 'lucide-react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -76,6 +76,12 @@ const formatCurrency = (amount: number) => {
   return `Rp. ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
+const getAnimalIcon = (index: number) => {
+  const icons = [Dog, Cat, Rabbit, Bird, Fish, Turtle, Snail, Bug];
+  const Icon = icons[index % icons.length];
+  return <Icon size={24} />;
+};
+
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -105,6 +111,7 @@ export default function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [pendingState, setPendingState] = useState<any>(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const shareRef = useRef<HTMLDivElement>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -117,6 +124,16 @@ export default function App() {
   // --- Persistence ---
   useEffect(() => {
     const saved = localStorage.getItem('splitbill_state');
+    const savedTheme = localStorage.getItem('splitbill_theme');
+    
+    if (savedTheme === 'dark') {
+      setDarkMode(true);
+    } else if (savedTheme === 'light') {
+      setDarkMode(false);
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setDarkMode(true);
+    }
+
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -146,6 +163,24 @@ export default function App() {
       }));
     }
   }, [bills, people, payments, step, currentBillId, isInitialized]);
+
+  useEffect(() => {
+    localStorage.setItem('splitbill_theme', darkMode ? 'dark' : 'light');
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  const ThemeToggle = () => (
+    <button 
+      onClick={() => setDarkMode(!darkMode)}
+      className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+    >
+      {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+    </button>
+  );
 
   // --- Handlers ---
   const startCamera = async () => {
@@ -488,7 +523,7 @@ export default function App() {
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="flex flex-col items-center justify-center h-full p-8 text-center space-y-8 bg-indigo-600 text-white"
+      className="flex flex-col items-center justify-center h-full p-8 text-center space-y-8 bg-indigo-600 dark:bg-indigo-900 text-white"
     >
       <div className="bg-white/20 p-6 rounded-full backdrop-blur-lg">
         <RefreshCw size={48} className="text-white animate-spin-slow" />
@@ -537,14 +572,17 @@ export default function App() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col items-center justify-center h-full p-6 text-center space-y-8"
+      className="flex flex-col items-center justify-center h-full p-6 text-center space-y-8 dark:bg-gray-950"
     >
-      <div className="w-24 h-24 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
+      <div className="absolute top-6 right-6">
+        <ThemeToggle />
+      </div>
+      <div className="w-24 h-24 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mb-4 shadow-inner">
         <Receipt size={48} />
       </div>
       <div>
-        <h1 className="text-4xl font-black text-gray-900 mb-3 tracking-tight">SplitBill</h1>
-        <p className="text-gray-500 max-w-[280px] mx-auto leading-relaxed">Cara termudah untuk bagi tagihan. Foto, bagi, dan bereskan.</p>
+        <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-3 tracking-tight">SplitBill</h1>
+        <p className="text-gray-500 dark:text-gray-400 max-w-[280px] mx-auto leading-relaxed">Cara termudah untuk bagi tagihan. Foto, bagi, dan bereskan.</p>
       </div>
       
       {error && (
@@ -615,21 +653,24 @@ export default function App() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="flex flex-col h-full bg-gray-50"
+      className="flex flex-col h-full bg-gray-50 dark:bg-gray-950"
     >
-      <div className="bg-white px-6 py-4 shadow-sm z-10 flex items-center space-x-4">
-        <button onClick={() => setStep('UPLOAD')} className="text-gray-400 hover:text-gray-900 p-2 -ml-2">
-          <ChevronLeft size={24} />
-        </button>
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Nama Pembayaran</h2>
-          <p className="text-gray-500 text-sm mt-1">Beri nama untuk nota ini.</p>
+      <div className="bg-white dark:bg-gray-900 px-6 py-4 shadow-sm z-10 flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <button onClick={() => setStep('UPLOAD')} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-2 -ml-2">
+            <ChevronLeft size={24} />
+          </button>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Nama Pembayaran</h2>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Beri nama untuk nota ini.</p>
+          </div>
         </div>
+        <ThemeToggle />
       </div>
 
       <div className="flex-1 p-6 space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">Nama Nota</label>
+          <label className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Nama Nota</label>
           <input
             type="text"
             value={currentBill?.name || ''}
@@ -639,12 +680,12 @@ export default function App() {
               }
             }}
             placeholder="Contoh: Makan Siang Kantor"
-            className="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 focus:outline-none focus:border-indigo-500 transition-colors font-medium text-lg"
+            className="w-full bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 rounded-2xl px-5 py-4 focus:outline-none focus:border-indigo-500 transition-colors font-medium text-lg dark:text-white"
           />
         </div>
       </div>
 
-      <div className="p-6 bg-white border-t border-gray-100">
+      <div className="p-6 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
         <button
           onClick={() => setStep('ADD_PEOPLE')}
           disabled={!currentBill?.name.trim()}
@@ -702,12 +743,12 @@ export default function App() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex flex-col items-center justify-center h-full p-6 text-center space-y-8"
+      className="flex flex-col items-center justify-center h-full p-6 text-center space-y-8 dark:bg-gray-950"
     >
       <div className="relative">
         {receiptImage && (
           <div className="relative">
-            <img src={receiptImage} alt="Receipt" className="w-56 h-72 object-cover rounded-3xl opacity-40 shadow-2xl grayscale" />
+            <img src={receiptImage} alt="Receipt" className="w-56 h-72 object-cover rounded-3xl opacity-40 shadow-2xl grayscale dark:opacity-20" />
             <motion.div 
               className="absolute top-0 left-0 right-0 h-1 bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)]"
               animate={{ top: ['0%', '100%', '0%'] }}
@@ -716,14 +757,14 @@ export default function App() {
           </div>
         )}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-3xl shadow-2xl">
-            <Loader2 size={40} className="text-indigo-600 animate-spin" />
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-3xl shadow-2xl">
+            <Loader2 size={40} className="text-indigo-600 dark:text-indigo-400 animate-spin" />
           </div>
         </div>
       </div>
       <div>
-        <h2 className="text-2xl font-black text-gray-900 tracking-tight">Menganalisis Nota</h2>
-        <p className="text-gray-500 text-sm mt-3 max-w-[240px] mx-auto leading-relaxed">AI kami sedang mengekstrak item, harga, dan pajak untuk Anda.</p>
+        <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Menganalisis Nota</h2>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mt-3 max-w-[240px] mx-auto leading-relaxed">AI kami sedang mengekstrak item, harga, dan pajak untuk Anda.</p>
       </div>
     </motion.div>
   );
@@ -733,16 +774,19 @@ export default function App() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="flex flex-col h-full bg-gray-50"
+      className="flex flex-col h-full bg-gray-50 dark:bg-gray-950"
     >
-      <div className="bg-white px-6 py-4 shadow-sm z-10 flex items-center space-x-4">
-        <button onClick={() => setStep('BILL_NAME')} className="text-gray-400 hover:text-gray-900 p-2 -ml-2">
-          <ChevronLeft size={24} />
-        </button>
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Siapa saja?</h2>
-          <p className="text-gray-500 text-sm mt-1">Tambah semua orang yang ikut membayar.</p>
+      <div className="bg-white dark:bg-gray-900 px-6 py-4 shadow-sm z-10 flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <button onClick={() => setStep('BILL_NAME')} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-2 -ml-2">
+            <ChevronLeft size={24} />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Siapa saja?</h2>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Tambah semua orang yang ikut membayar.</p>
+          </div>
         </div>
+        <ThemeToggle />
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -752,12 +796,12 @@ export default function App() {
             value={newPersonName}
             onChange={(e) => setNewPersonName(e.target.value)}
             placeholder="Masukkan nama..."
-            className="flex-1 bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 focus:outline-none focus:border-indigo-500 transition-colors font-medium"
+            className="flex-1 bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 rounded-2xl px-5 py-4 focus:outline-none focus:border-indigo-500 transition-colors font-medium dark:text-white"
           />
           <button 
             type="submit"
             disabled={!newPersonName.trim()}
-            className="bg-indigo-600 text-white p-4 rounded-2xl disabled:opacity-50 disabled:bg-gray-400 transition-all active:scale-95 shadow-lg shadow-indigo-100"
+            className="bg-indigo-600 text-white p-4 rounded-2xl disabled:opacity-50 disabled:bg-gray-400 transition-all active:scale-95 shadow-lg shadow-indigo-100 dark:shadow-none"
           >
             <Plus size={24} />
           </button>
@@ -770,24 +814,24 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               key={person.id} 
-              className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-gray-100"
+              className="flex items-center justify-between bg-white dark:bg-gray-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800"
             >
               <div className="flex items-center space-x-4">
                 <div className={`w-12 h-12 rounded-full ${person.color} flex items-center justify-center text-white font-bold text-lg shadow-inner`}>
                   {person.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="font-bold text-gray-800">{person.name}</span>
+                <span className="font-bold text-gray-800 dark:text-gray-200">{person.name}</span>
               </div>
               <button 
                 onClick={() => removePerson(person.id)}
-                className="text-gray-300 hover:text-red-500 transition-colors p-2"
+                className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors p-2"
               >
                 <Trash2 size={20} />
               </button>
             </motion.div>
           ))}
           {people.length === 0 && (
-            <div className="text-center py-12 text-gray-400">
+            <div className="text-center py-12 text-gray-400 dark:text-gray-600">
               <Users size={48} className="mx-auto mb-4 opacity-20" />
               <p>Belum ada orang. Tambahkan temanmu!</p>
             </div>
@@ -795,7 +839,7 @@ export default function App() {
         </div>
       </div>
 
-      <div className="p-6 bg-white border-t border-gray-100">
+      <div className="p-6 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
         <button
           onClick={() => setStep('ASSIGN_ITEMS')}
           disabled={people.length === 0}
@@ -816,33 +860,37 @@ export default function App() {
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -20 }}
-        className="flex flex-col h-full bg-gray-50"
+        className="flex flex-col h-full bg-gray-50 dark:bg-gray-950"
       >
-        <div className="bg-white px-6 py-4 shadow-sm z-10 flex items-center justify-between">
+        <div className="bg-white dark:bg-gray-900 px-6 py-4 shadow-sm z-10 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button onClick={() => setStep('ADD_PEOPLE')} className="text-gray-400 hover:text-gray-900 p-2 -ml-2">
+            <button onClick={() => setStep('ADD_PEOPLE')} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-2 -ml-2">
               <ChevronLeft size={24} />
             </button>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Bagi Item</h2>
-              <p className="text-gray-500 text-sm mt-1">Ketuk nama orang untuk membagi biaya.</p>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Bagi Item</h2>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Ketuk nama orang untuk membagi biaya.</p>
             </div>
           </div>
-          <button onClick={() => setStep('ADD_PEOPLE')} className="text-indigo-600 text-sm font-bold p-2 bg-indigo-50 rounded-xl px-4">
-            Edit Orang
-          </button>
+          <div className="flex items-center space-x-2">
+            <button onClick={() => setStep('ADD_PEOPLE')} className="text-indigo-600 dark:text-indigo-400 text-sm font-bold p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl px-4">
+              Edit Orang
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-32">
           {currentBill.items.map(item => (
-            <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div key={item.id} className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
               <div className="flex justify-between items-start gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <input 
                       type="number"
-                      value={item.qty}
-                      onFocus={(e) => { if (item.qty === 0) e.target.select(); }}
+                      value={item.qty === 0 ? '' : item.qty}
+                      placeholder="0"
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => {
                         const val = parseInt(e.target.value) || 0;
                         setBills(bills.map(b => b.id === currentBillId ? {
@@ -850,11 +898,12 @@ export default function App() {
                           items: b.items.map(i => i.id === item.id ? { ...i, qty: val } : i)
                         } : b));
                       }}
-                      className="w-10 h-8 text-center bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 font-bold text-sm"
+                      className="w-10 h-8 text-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 font-bold text-sm dark:text-white"
                     />
                     <input 
                       type="text"
                       value={item.name}
+                      placeholder="Nama item..."
                       onFocus={(e) => { if (item.name === 'Item Baru') e.target.select(); }}
                       onChange={(e) => {
                         setBills(bills.map(b => b.id === currentBillId ? {
@@ -862,15 +911,16 @@ export default function App() {
                           items: b.items.map(i => i.id === item.id ? { ...i, name: e.target.value } : i)
                         } : b));
                       }}
-                      className="font-bold text-gray-900 leading-tight text-base bg-transparent border-b border-transparent focus:border-indigo-200 focus:outline-none flex-1 truncate"
+                      className="font-bold text-gray-900 dark:text-white leading-tight text-base bg-transparent border-b border-transparent focus:border-indigo-200 focus:outline-none flex-1 truncate"
                     />
                   </div>
-                  <div className="flex items-center text-indigo-600 font-black mt-1 text-lg">
+                  <div className="flex items-center text-indigo-600 dark:text-indigo-400 font-black mt-1 text-lg">
                     <span className="text-sm mr-1">Rp.</span>
                     <input 
                       type="number"
-                      value={item.price}
-                      onFocus={(e) => { if (item.price === 0) e.target.select(); }}
+                      value={item.price === 0 ? '' : item.price}
+                      placeholder="0"
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => {
                         const val = parseFloat(e.target.value) || 0;
                         setBills(bills.map(b => b.id === currentBillId ? {
@@ -885,19 +935,21 @@ export default function App() {
                 <div className="flex flex-col items-end gap-2">
                   <button 
                     onClick={() => selectAllPeopleForItem(item.id)}
-                    className="text-[10px] font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded-lg flex items-center space-x-1 transition-colors"
+                    className="text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded-lg flex items-center space-x-1 transition-colors"
                   >
                     <SplitSquareHorizontal size={12} />
                     <span>Semua</span>
                   </button>
                   <button 
                     onClick={() => {
-                      setBills(bills.map(b => b.id === currentBillId ? {
-                        ...b,
-                        items: b.items.filter(i => i.id !== item.id)
-                      } : b));
+                      if (window.confirm(`Hapus item "${item.name}"?`)) {
+                        setBills(bills.map(b => b.id === currentBillId ? {
+                          ...b,
+                          items: b.items.filter(i => i.id !== item.id)
+                        } : b));
+                      }
                     }}
-                    className="text-gray-300 hover:text-red-500 p-1 transition-colors"
+                    className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors p-1"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -914,7 +966,7 @@ export default function App() {
                       className={`flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-90 ${
                         isSelected 
                           ? `${person.color} text-white shadow-sm` 
-                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
                     >
                       {isSelected && <Check size={12} />}
@@ -925,9 +977,9 @@ export default function App() {
               </div>
               
               {item.sharedBy.length > 0 && (
-                <div className="mt-3 pt-2 border-t border-gray-50 text-[10px] font-bold text-gray-400 flex justify-between uppercase tracking-wider">
+                <div className="mt-3 pt-2 border-t border-gray-50 dark:border-gray-800 text-[10px] font-bold text-gray-400 flex justify-between uppercase tracking-wider">
                   <span>Dibagi {item.sharedBy.length} orang</span>
-                  <span className="text-indigo-600">{formatCurrency(item.price / item.sharedBy.length)} /org</span>
+                  <span className="text-indigo-600 dark:text-indigo-400">{formatCurrency(item.price / item.sharedBy.length)} /org</span>
                 </div>
               )}
             </div>
@@ -938,17 +990,17 @@ export default function App() {
               const newItem: Item = { id: generateId(), name: 'Item Baru', price: 0, qty: 1, sharedBy: [] };
               setBills(bills.map(b => b.id === currentBillId ? { ...b, items: [...b.items, newItem] } : b));
             }}
-            className="w-full border-2 border-dashed border-gray-200 rounded-2xl p-4 text-gray-400 font-bold flex items-center justify-center space-x-2 hover:border-indigo-200 hover:text-indigo-400 transition-all text-sm"
+            className="w-full border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl p-4 text-gray-400 dark:text-gray-600 font-bold flex items-center justify-center space-x-2 hover:border-indigo-200 dark:hover:border-indigo-800 hover:text-indigo-400 dark:hover:text-indigo-600 transition-all text-sm"
           >
             <Plus size={18} />
             <span>Tambah Item Manual</span>
           </button>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white to-transparent pt-12">
+        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white dark:from-gray-950 via-white dark:via-gray-950 to-transparent pt-12">
           <button
             onClick={() => setStep('TAX_SERVICE')}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-5 px-6 rounded-2xl flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-xl shadow-indigo-200"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-5 px-6 rounded-2xl flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-xl shadow-indigo-200 dark:shadow-none"
           >
             <span>Pajak & Layanan</span>
             <ChevronRight size={20} />
@@ -971,36 +1023,39 @@ export default function App() {
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -20 }}
-        className="flex flex-col h-full bg-gray-50"
+        className="flex flex-col h-full bg-gray-50 dark:bg-gray-950"
       >
-        <div className="bg-white px-6 py-4 shadow-sm z-10 flex items-center space-x-4">
-          <button onClick={() => setStep('ASSIGN_ITEMS')} className="text-gray-400 hover:text-gray-900 p-2 -ml-2">
-            <ChevronLeft size={24} />
-          </button>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Pajak & Layanan</h2>
-            <p className="text-gray-500 text-sm mt-1">Sesuaikan biaya tambahan</p>
+        <div className="bg-white dark:bg-gray-900 px-6 py-4 shadow-sm z-10 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button onClick={() => setStep('ASSIGN_ITEMS')} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-2 -ml-2">
+              <ChevronLeft size={24} />
+            </button>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Pajak & Layanan</h2>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Sesuaikan biaya tambahan</p>
+            </div>
           </div>
+          <ThemeToggle />
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-6">
-            <div className="flex justify-between items-center pb-4 border-b border-gray-100">
-              <span className="text-gray-500 font-medium">Subtotal Item</span>
-              <span className="font-bold text-gray-900 text-lg">{formatCurrency(subtotal)}</span>
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 space-y-6">
+            <div className="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-gray-800">
+              <span className="text-gray-500 dark:text-gray-400 font-medium">Subtotal Item</span>
+              <span className="font-bold text-gray-900 dark:text-white text-lg">{formatCurrency(subtotal)}</span>
             </div>
 
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">Biaya Layanan (%)</label>
-                <div className="text-indigo-600 font-bold">{formatCurrency(serviceAmount)}</div>
+                <label className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Biaya Layanan (%)</label>
+                <div className="text-indigo-600 dark:text-indigo-400 font-bold">{formatCurrency(serviceAmount)}</div>
               </div>
               <input
                 type="number"
-                value={servicePercentage}
+                value={parseFloat(servicePercentage) === 0 ? '' : servicePercentage}
                 onFocus={(e) => { if (parseFloat(servicePercentage) === 0) e.target.select(); }}
                 onChange={(e) => setServicePercentage(e.target.value)}
-                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-5 py-4 focus:outline-none focus:border-indigo-500 transition-colors text-lg font-medium"
+                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-indigo-500 transition-colors text-lg font-medium dark:text-white"
                 placeholder="0"
                 step="0.1"
               />
@@ -1008,33 +1063,33 @@ export default function App() {
 
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">Pajak (%)</label>
-                <div className="text-indigo-600 font-bold">{formatCurrency(taxAmount)}</div>
+                <label className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Pajak (%)</label>
+                <div className="text-indigo-600 dark:text-indigo-400 font-bold">{formatCurrency(taxAmount)}</div>
               </div>
               <input
                 type="number"
-                value={taxPercentage}
+                value={parseFloat(taxPercentage) === 0 ? '' : taxPercentage}
                 onFocus={(e) => { if (parseFloat(taxPercentage) === 0) e.target.select(); }}
                 onChange={(e) => setTaxPercentage(e.target.value)}
-                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-5 py-4 focus:outline-none focus:border-indigo-500 transition-colors text-lg font-medium"
+                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-indigo-500 transition-colors text-lg font-medium dark:text-white"
                 placeholder="0"
                 step="0.1"
               />
             </div>
 
-            <div className="pt-6 border-t border-gray-100">
+            <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
               <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-900">Total Akhir</span>
-                <span className="font-black text-2xl text-indigo-600">{formatCurrency(total)}</span>
+                <span className="font-bold text-gray-900 dark:text-white">Total Akhir</span>
+                <span className="font-black text-2xl text-indigo-600 dark:text-indigo-400">{formatCurrency(total)}</span>
               </div>
-              <p className="text-[10px] text-gray-400 mt-2">
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">
                 *Biaya tambahan akan dibagi secara proporsional berdasarkan total belanja masing-masing.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="p-6 bg-white border-t border-gray-100">
+        <div className="p-6 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
           <button
             onClick={() => {
               setBills(bills.map(b => b.id === currentBillId ? {
@@ -1068,39 +1123,42 @@ export default function App() {
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -20 }}
-        className="flex flex-col h-full bg-gray-50"
+        className="flex flex-col h-full bg-gray-50 dark:bg-gray-950"
       >
-        <div className="bg-white px-6 py-4 shadow-sm z-10 flex items-center space-x-4">
-          <button onClick={() => setStep('TAX_SERVICE')} className="text-gray-400 hover:text-gray-900 p-2 -ml-2">
-            <ChevronLeft size={24} />
-          </button>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Pembayaran</h2>
-            <p className="text-gray-500 text-sm mt-1">Siapa yang membayar tagihan?</p>
+        <div className="bg-white dark:bg-gray-900 px-6 py-4 shadow-sm z-10 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button onClick={() => setStep('TAX_SERVICE')} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-2 -ml-2">
+              <ChevronLeft size={24} />
+            </button>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Pembayaran</h2>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Siapa yang membayar tagihan?</p>
+            </div>
           </div>
+          <ThemeToggle />
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-gray-500 font-medium">Total Tagihan</span>
-              <span className="font-bold text-gray-900">{formatCurrency(totalBill)}</span>
+              <span className="text-gray-500 dark:text-gray-400 font-medium">Total Tagihan</span>
+              <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(totalBill)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-500 font-medium">Total Dibayar</span>
-              <span className="font-bold text-emerald-600">{formatCurrency(totalPaid)}</span>
+              <span className="text-gray-500 dark:text-gray-400 font-medium">Total Dibayar</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totalPaid)}</span>
             </div>
-            <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-              <span className="font-bold text-gray-900">Sisa</span>
-              <span className={`font-black text-xl ${remaining > 0.01 ? 'text-red-500' : 'text-emerald-600'}`}>
+            <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-800">
+              <span className="font-bold text-gray-900 dark:text-white">Sisa</span>
+              <span className={`font-black text-xl ${remaining > 0.01 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
                 {remaining > 0.01 ? formatCurrency(remaining) : 'Lunas!'}
               </span>
             </div>
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider px-1">Tambah Pembayaran</h3>
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider px-1">Tambah Pembayaran</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 {people.map(person => (
                   <button
@@ -1109,12 +1167,12 @@ export default function App() {
                       const amount = remaining > 0 ? remaining : 0;
                       setPayments([...payments, { id: generateId(), personId: person.id, amount, note: 'Bayar' }]);
                     }}
-                    className={`flex items-center space-x-3 p-3 rounded-2xl border-2 transition-all active:scale-95 ${person.color.replace('bg-', 'border-').replace('500', '100')} hover:bg-gray-50`}
+                    className={`flex items-center space-x-3 p-3 rounded-2xl border-2 transition-all active:scale-95 ${person.color.replace('bg-', 'border-').replace('500', '100')} dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800`}
                   >
                     <div className={`w-8 h-8 rounded-full ${person.color} flex items-center justify-center text-white font-bold text-xs`}>
                       {person.name.charAt(0).toUpperCase()}
                     </div>
-                    <span className="font-bold text-gray-700 text-sm truncate">{person.name}</span>
+                    <span className="font-bold text-gray-700 dark:text-gray-300 text-sm truncate">{person.name}</span>
                   </button>
                 ))}
               </div>
@@ -1122,9 +1180,9 @@ export default function App() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider px-1">Riwayat Pembayaran</h3>
+            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider px-1">Riwayat Pembayaran</h3>
             {payments.length === 0 ? (
-              <div className="text-center py-8 text-gray-400 bg-white rounded-3xl border border-dashed border-gray-200 text-sm">
+              <div className="text-center py-8 text-gray-400 dark:text-gray-600 bg-white dark:bg-gray-900 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 text-sm">
                 Belum ada pembayaran tercatat.
               </div>
             ) : (
@@ -1132,41 +1190,42 @@ export default function App() {
                 {payments.map(payment => {
                   const person = people.find(p => p.id === payment.personId);
                   return (
-                    <div key={payment.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                    <div key={payment.id} className="bg-white dark:bg-gray-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className={`w-8 h-8 rounded-full ${person?.color} flex items-center justify-center text-white font-bold text-xs`}>
                           {person?.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <div className="font-bold text-gray-900 text-sm">{person?.name}</div>
+                          <div className="font-bold text-gray-900 dark:text-white text-sm">{person?.name}</div>
                           <input 
                             type="text"
                             value={payment.note}
                             onChange={(e) => {
                               setPayments(payments.map(p => p.id === payment.id ? { ...p, note: e.target.value } : p));
                             }}
-                            className="text-xs text-gray-400 bg-transparent focus:outline-none focus:text-indigo-500"
+                            className="text-xs text-gray-400 dark:text-gray-500 bg-transparent focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400"
                           />
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
                         <div className="text-right">
-                          <div className="flex items-center text-sm font-black text-gray-900">
+                          <div className="flex items-center text-sm font-black text-gray-900 dark:text-white">
                             <span className="text-[10px] mr-1">Rp.</span>
                             <input 
                               type="number"
-                              value={payment.amount}
+                              value={payment.amount === 0 ? '' : payment.amount}
+                              placeholder="0"
                               onFocus={(e) => { if (payment.amount === 0) e.target.select(); }}
                               onChange={(e) => {
                                 setPayments(payments.map(p => p.id === payment.id ? { ...p, amount: parseFloat(e.target.value) || 0 } : p));
                               }}
-                              className="bg-transparent w-20 text-right focus:outline-none focus:text-indigo-500"
+                              className="bg-transparent w-20 text-right focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400"
                             />
                           </div>
                         </div>
                         <button 
                           onClick={() => setPayments(payments.filter(p => p.id !== payment.id))}
-                          className="text-gray-300 hover:text-red-500 p-1"
+                          className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors p-1"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1179,10 +1238,10 @@ export default function App() {
           </div>
         </div>
 
-        <div className="p-6 bg-white border-t border-gray-100">
+        <div className="p-6 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
           <button
             onClick={() => setStep('SUMMARY')}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-5 px-6 rounded-2xl flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-xl shadow-indigo-200"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-5 px-6 rounded-2xl flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-xl shadow-indigo-200 dark:shadow-none"
           >
             <span>Lihat Hasil Akhir</span>
             <ChevronRight size={20} />
@@ -1416,14 +1475,21 @@ export default function App() {
                       <div style={{display: 'flex', alignItems: 'center'}}>
                         <div 
                           style={{ 
-                            width: '12px', 
-                            height: '12px', 
+                            width: '24px', 
+                            height: '24px', 
                             borderRadius: '9999px', 
                             backgroundColor: HEX_COLORS[person.color] || '#000',
                             marginRight: '16px',
-                            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white'
                           }}
-                        ></div>
+                        >
+                          {/* We can't easily render the icon component here as a string for html2canvas if it's complex, but let's try */}
+                          {React.cloneElement(getAnimalIcon(i) as React.ReactElement, { size: 14 })}
+                        </div>
                         <span style={{fontWeight: '700', color: HEX_COLORS['text-gray-900']}}>{person.name}</span>
                       </div>
                     </td>
@@ -1465,23 +1531,24 @@ export default function App() {
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -20 }}
-        className="flex flex-col h-full bg-gray-50"
+        className="flex flex-col h-full bg-gray-50 dark:bg-gray-950"
       >
-        <div className="bg-white px-6 py-4 shadow-sm z-10 flex items-center justify-between">
+        <div className="bg-white dark:bg-gray-900 px-6 py-4 shadow-sm z-10 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button onClick={() => setStep('PAYMENTS')} className="text-gray-400 hover:text-gray-900 p-2 -ml-2">
+            <button onClick={() => setStep('PAYMENTS')} className="text-gray-400 hover:text-gray-900 dark:hover:text-white p-2 -ml-2">
               <ChevronLeft size={24} />
             </button>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Hasil Akhir</h2>
-              <p className="text-gray-500 text-sm mt-1">Ringkasan pembagian biaya</p>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Hasil Akhir</h2>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Ringkasan pembagian biaya</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            <ThemeToggle />
             <button 
               onClick={handleDownload}
               disabled={isSharing}
-              className="bg-gray-100 text-gray-700 p-3 rounded-2xl shadow-sm active:scale-95 transition-all disabled:opacity-50 flex items-center space-x-2"
+              className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 p-3 rounded-2xl shadow-sm active:scale-95 transition-all disabled:opacity-50 flex items-center space-x-2"
             >
               <Download size={18} />
               <span className="text-xs font-bold hidden sm:inline">Download</span>
@@ -1489,7 +1556,7 @@ export default function App() {
             <button 
               onClick={handleNativeShare}
               disabled={isSharing}
-              className="bg-indigo-600 text-white p-3 rounded-2xl shadow-lg shadow-indigo-100 active:scale-95 transition-all disabled:opacity-50 flex items-center space-x-2"
+              className="bg-indigo-600 text-white p-3 rounded-2xl shadow-lg shadow-indigo-100 dark:shadow-none active:scale-95 transition-all disabled:opacity-50 flex items-center space-x-2"
             >
               {isSharing ? <Loader2 size={18} className="animate-spin" /> : <Share2 size={18} />}
               <span className="text-xs font-bold hidden sm:inline">Share</span>
@@ -1504,15 +1571,15 @@ export default function App() {
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-red-50 border-2 border-red-200 text-red-800 px-6 py-5 rounded-3xl shadow-lg shadow-red-100 flex flex-col space-y-3"
+              className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-900/30 text-red-800 dark:text-red-200 px-6 py-5 rounded-3xl shadow-lg shadow-red-100 dark:shadow-none flex flex-col space-y-3"
             >
               <div className="flex items-start space-x-4">
-                <div className="bg-red-100 p-3 rounded-2xl text-red-600">
+                <div className="bg-red-100 dark:bg-red-900/40 p-3 rounded-2xl text-red-600 dark:text-red-400">
                   <AlertCircle size={28} />
                 </div>
                 <div>
                   <p className="font-black text-lg leading-tight">Ada Item Belum Dibagi!</p>
-                  <p className="text-red-700 text-sm mt-1">Ada {unassignedItemsCount} item yang belum dibagikan ke siapapun. Total tagihan mungkin tidak akurat.</p>
+                  <p className="text-red-700 dark:text-red-300 text-sm mt-1">Ada {unassignedItemsCount} item yang belum dibagikan ke siapapun. Total tagihan mungkin tidak akurat.</p>
                 </div>
               </div>
               <div className="pt-2">
@@ -1534,49 +1601,49 @@ export default function App() {
           )}
 
           <div className="space-y-6">
-            <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider px-1">Penyelesaian</h3>
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider px-1">Penyelesaian</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 space-y-4">
               {calculateSettlements(totals).length === 0 ? (
-                <div className="text-center py-4 text-gray-500 font-medium">
+                <div className="text-center py-4 text-gray-500 dark:text-gray-400 font-medium">
                   Semua sudah lunas! 🎉
                 </div>
               ) : (
                 <div className="space-y-4">
                   {calculateSettlements(totals).map((s, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 bg-indigo-50 rounded-2xl">
+                    <div key={i} className="flex items-center justify-between p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl">
                       <div className="flex items-center space-x-2">
-                        <span className="font-bold text-gray-900 text-sm">{s.from}</span>
+                        <span className="font-bold text-gray-900 dark:text-white text-sm">{s.from}</span>
                         <ChevronRight size={14} className="text-indigo-400" />
-                        <span className="font-bold text-gray-900 text-sm">{s.to}</span>
+                        <span className="font-bold text-gray-900 dark:text-white text-sm">{s.to}</span>
                       </div>
-                      <div className="font-black text-indigo-600 text-sm">{formatCurrency(s.amount)}</div>
+                      <div className="font-black text-indigo-600 dark:text-indigo-400 text-sm">{formatCurrency(s.amount)}</div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider px-1">Rincian Per Orang</h3>
+            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider px-1">Rincian Per Orang</h3>
             <div className="space-y-4">
-              {totals.map(person => (
+              {totals.map((person, index) => (
                 <motion.div 
                   layout
                   key={person.id} 
-                  className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 relative overflow-hidden"
+                  className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 relative overflow-hidden"
                 >
                   <div className={`absolute left-0 top-0 bottom-0 w-2 ${person.color}`}></div>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center space-x-4">
                       <div className={`w-12 h-12 rounded-full ${person.color} flex items-center justify-center text-white font-bold text-lg shadow-inner`}>
-                        {person.name.charAt(0).toUpperCase()}
+                        {getAnimalIcon(index)}
                       </div>
-                      <h3 className="font-black text-xl text-gray-900">{person.name}</h3>
+                      <h3 className="font-black text-xl text-gray-900 dark:text-white">{person.name}</h3>
                     </div>
                     <div className="text-right">
-                      <div className="text-xl font-black text-indigo-600">
+                      <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">
                         {formatCurrency(person.finalTotal)}
                       </div>
-                      <div className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${person.balance > 0.01 ? 'text-emerald-500' : person.balance < -0.01 ? 'text-red-500' : 'text-gray-400'}`}>
+                      <div className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${person.balance > 0.01 ? 'text-emerald-500 dark:text-emerald-400' : person.balance < -0.01 ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
                         {person.balance > 0.01 ? `Piutang ${formatCurrency(person.balance)}` : person.balance < -0.01 ? `Hutang ${formatCurrency(Math.abs(person.balance))}` : 'Lunas'}
                       </div>
                     </div>
@@ -1586,19 +1653,19 @@ export default function App() {
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-            <h3 className="font-bold text-gray-900 mb-4 uppercase tracking-wider text-xs">Ringkasan Nota</h3>
-            <div className="space-y-3 text-xs text-gray-500">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+            <h3 className="font-bold text-gray-900 dark:text-white mb-4 uppercase tracking-wider text-xs">Ringkasan Nota</h3>
+            <div className="space-y-3 text-xs text-gray-500 dark:text-gray-400">
               {bills.map(bill => (
-                <div key={bill.id} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
+                <div key={bill.id} className="flex justify-between items-center py-2 border-b border-gray-50 dark:border-gray-800 last:border-0">
                   <div className="flex flex-col">
-                    <span className="font-bold text-gray-900">{bill.name}</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{bill.name}</span>
                     <span className="text-[10px]">{bill.items.length} item</span>
                   </div>
-                  <span className="font-bold text-gray-900">{formatCurrency(bill.total)}</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(bill.total)}</span>
                 </div>
               ))}
-              <div className="flex justify-between font-black text-lg text-indigo-600 pt-4 mt-3">
+              <div className="flex justify-between font-black text-lg text-indigo-600 dark:text-indigo-400 pt-4 mt-3">
                 <span>Total Keseluruhan</span>
                 <span>{formatCurrency(totalBill)}</span>
               </div>
@@ -1606,10 +1673,10 @@ export default function App() {
           </div>
         </div>
 
-        <div className="p-6 bg-white border-t border-gray-100 space-y-3">
+        <div className="p-6 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 space-y-3">
           <button
             onClick={() => setStep('UPLOAD')}
-            className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold py-5 px-6 rounded-2xl flex items-center justify-center space-x-2 transition-all active:scale-95"
+            className="w-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold py-5 px-6 rounded-2xl flex items-center justify-center space-x-2 transition-all active:scale-95"
           >
             <Plus size={20} />
             <span>Tambah Nota Lain</span>
@@ -1625,7 +1692,7 @@ export default function App() {
                 localStorage.removeItem('splitbill_state');
               }
             }}
-            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold py-5 px-6 rounded-2xl transition-all active:scale-95"
+            className="w-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-200 font-bold py-5 px-6 rounded-2xl transition-all active:scale-95"
           >
             Mulai Baru
           </button>
@@ -1635,8 +1702,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex justify-center font-sans overflow-hidden">
-      <div className="w-full max-w-md bg-white h-screen shadow-2xl overflow-hidden relative flex flex-col">
+    <div className="min-h-screen bg-gray-900 dark:bg-black flex justify-center font-sans overflow-hidden">
+      <div className="w-full max-w-md bg-white dark:bg-gray-950 h-screen shadow-2xl overflow-hidden relative flex flex-col">
         <AnimatePresence mode="wait">
           {step === 'RESTORE' && renderRestoreSession()}
           {step === 'UPLOAD' && renderUpload()}

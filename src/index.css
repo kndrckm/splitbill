@@ -4,6 +4,8 @@
   --animate-spin-slow: spin 3s linear infinite;
 }
 
+@variant dark (&:where(.dark, .dark *));
+
 @layer base {
   /* Chrome, Safari, Edge, Opera */
   input::-webkit-outer-spin-button,
