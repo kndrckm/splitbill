@@ -215,7 +215,7 @@ export default function App() {
       const ai = new GoogleGenAI({ apiKey });
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: [
           {
             inlineData: {
@@ -842,6 +842,7 @@ export default function App() {
                     <input 
                       type="number"
                       value={item.qty}
+                      onFocus={(e) => { if (item.qty === 0) e.target.select(); }}
                       onChange={(e) => {
                         const val = parseInt(e.target.value) || 0;
                         setBills(bills.map(b => b.id === currentBillId ? {
@@ -854,6 +855,7 @@ export default function App() {
                     <input 
                       type="text"
                       value={item.name}
+                      onFocus={(e) => { if (item.name === 'Item Baru') e.target.select(); }}
                       onChange={(e) => {
                         setBills(bills.map(b => b.id === currentBillId ? {
                           ...b,
@@ -868,6 +870,7 @@ export default function App() {
                     <input 
                       type="number"
                       value={item.price}
+                      onFocus={(e) => { if (item.price === 0) e.target.select(); }}
                       onChange={(e) => {
                         const val = parseFloat(e.target.value) || 0;
                         setBills(bills.map(b => b.id === currentBillId ? {
@@ -995,6 +998,7 @@ export default function App() {
               <input
                 type="number"
                 value={servicePercentage}
+                onFocus={(e) => { if (parseFloat(servicePercentage) === 0) e.target.select(); }}
                 onChange={(e) => setServicePercentage(e.target.value)}
                 className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-5 py-4 focus:outline-none focus:border-indigo-500 transition-colors text-lg font-medium"
                 placeholder="0"
@@ -1010,6 +1014,7 @@ export default function App() {
               <input
                 type="number"
                 value={taxPercentage}
+                onFocus={(e) => { if (parseFloat(taxPercentage) === 0) e.target.select(); }}
                 onChange={(e) => setTaxPercentage(e.target.value)}
                 className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-5 py-4 focus:outline-none focus:border-indigo-500 transition-colors text-lg font-medium"
                 placeholder="0"
@@ -1151,6 +1156,7 @@ export default function App() {
                             <input 
                               type="number"
                               value={payment.amount}
+                              onFocus={(e) => { if (payment.amount === 0) e.target.select(); }}
                               onChange={(e) => {
                                 setPayments(payments.map(p => p.id === payment.id ? { ...p, amount: parseFloat(e.target.value) || 0 } : p));
                               }}
@@ -1186,15 +1192,14 @@ export default function App() {
     );
   };
 
-  const handleShare = async () => {
+  const handleDownload = async () => {
     if (!shareRef.current) return;
     setIsSharing(true);
     try {
-      // Small delay to ensure any layout shifts are settled
       await new Promise(resolve => setTimeout(resolve, 100));
       const canvas = await html2canvas(shareRef.current, {
         backgroundColor: '#f9fafb',
-        scale: 3, // Higher scale for better quality
+        scale: 3,
         logging: false,
         useCORS: true,
         allowTaint: true
@@ -1205,8 +1210,45 @@ export default function App() {
       link.download = `splitbill-summary-${new Date().getTime()}.png`;
       link.click();
     } catch (err) {
+      console.error('Failed to download:', err);
+      alert('Gagal mengunduh gambar.');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (!shareRef.current) return;
+    setIsSharing(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const canvas = await html2canvas(shareRef.current, {
+        backgroundColor: '#f9fafb',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        allowTaint: true
+      });
+      
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('Failed to create blob');
+      
+      const file = new File([blob], 'splitbill-summary.png', { type: 'image/png' });
+      
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Splitbill Summary',
+          text: 'Berikut adalah rincian pembagian tagihan kita.'
+        });
+      } else {
+        // Fallback to download if share is not supported
+        handleDownload();
+      }
+    } catch (err) {
       console.error('Failed to share:', err);
-      alert('Gagal mengambil gambar. Silakan coba lagi.');
+      // Fallback to download
+      handleDownload();
     } finally {
       setIsSharing(false);
     }
@@ -1216,75 +1258,176 @@ export default function App() {
     const settlements = calculateSettlements(totals);
     const totalBill = bills.reduce((sum, b) => sum + b.total, 0);
     
+    // Inline styles to avoid Tailwind's oklch colors which break html2canvas
+    const styles = {
+      container: {
+        position: 'fixed' as const,
+        left: '-9999px',
+        top: '0',
+        width: '450px',
+        padding: '40px',
+        backgroundColor: HEX_COLORS['bg-gray-50'],
+        color: HEX_COLORS['text-gray-900'],
+        fontFamily: 'sans-serif',
+      },
+      header: {
+        textAlign: 'center' as const,
+        marginBottom: '32px',
+      },
+      iconContainer: {
+        display: 'flex',
+        justifyContent: 'center',
+        marginBottom: '12px',
+      },
+      iconBg: {
+        backgroundColor: HEX_COLORS['bg-indigo-600'],
+        padding: '12px',
+        borderRadius: '16px',
+        boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.2)',
+      },
+      title: {
+        fontSize: '30px',
+        fontWeight: '900',
+        letterSpacing: '-0.025em',
+        margin: '0',
+        color: HEX_COLORS['text-gray-900'],
+      },
+      subtitle: {
+        fontSize: '12px',
+        fontWeight: '500',
+        textTransform: 'uppercase' as const,
+        letterSpacing: '0.2em',
+        color: HEX_COLORS['text-gray-400'],
+        margin: '4px 0',
+      },
+      divider: {
+        height: '4px',
+        width: '48px',
+        backgroundColor: HEX_COLORS['bg-indigo-600'],
+        margin: '12px auto',
+        borderRadius: '9999px',
+      },
+      section: {
+        marginBottom: '32px',
+      },
+      sectionTitle: {
+        fontSize: '10px',
+        fontWeight: '700',
+        textTransform: 'uppercase' as const,
+        letterSpacing: '0.1em',
+        color: HEX_COLORS['text-gray-400'],
+        padding: '0 4px',
+        marginBottom: '16px',
+      },
+      card: {
+        backgroundColor: HEX_COLORS['bg-white'],
+        borderRadius: '32px',
+        padding: '32px',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+        border: '1px solid #f3f4f6',
+      },
+      settlementItem: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '16px',
+        backgroundColor: HEX_COLORS['bg-indigo-50'],
+        borderRadius: '16px',
+        marginBottom: '12px',
+      },
+      tableContainer: {
+        backgroundColor: HEX_COLORS['bg-white'],
+        borderRadius: '32px',
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+        border: '1px solid #f3f4f6',
+      },
+      table: {
+        width: '100%',
+        textAlign: 'left' as const,
+        borderCollapse: 'collapse' as const,
+      },
+      th: {
+        padding: '20px 32px',
+        fontSize: '10px',
+        fontWeight: '700',
+        textTransform: 'uppercase' as const,
+        letterSpacing: '0.05em',
+        color: HEX_COLORS['text-gray-400'],
+        backgroundColor: '#fcfcfd',
+        borderBottom: '1px solid #f3f4f6',
+      },
+      td: {
+        padding: '20px 32px',
+        borderBottom: '1px solid #f9fafb',
+      },
+      footer: {
+        textAlign: 'center' as const,
+        paddingTop: '24px',
+        opacity: '0.3',
+      }
+    };
+    
     return (
-      <div 
-        ref={shareRef} 
-        className="fixed -left-[9999px] top-0 w-[450px] p-10 space-y-8 font-sans"
-        style={{ 
-          position: 'fixed', 
-          left: '-9999px',
-          backgroundColor: HEX_COLORS['bg-gray-50'],
-          color: HEX_COLORS['text-gray-900']
-        }}
-      >
-        <div className="text-center space-y-3">
-          <div className="flex justify-center">
-            <div 
-              className="p-3 rounded-2xl shadow-lg"
-              style={{ 
-                backgroundColor: HEX_COLORS['bg-indigo-600'],
-                boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.2)'
-              }}
-            >
+      <div ref={shareRef} style={styles.container}>
+        <div style={styles.header}>
+          <div style={styles.iconContainer}>
+            <div style={styles.iconBg}>
               <Receipt size={32} style={{ color: HEX_COLORS['text-white'] }} />
             </div>
           </div>
-          <h1 className="text-3xl font-black tracking-tight" style={{ color: HEX_COLORS['text-gray-900'] }}>Splitbill</h1>
-          <p className="text-sm font-medium uppercase tracking-[0.2em]" style={{ color: HEX_COLORS['text-gray-400'] }}>Ringkasan Pembagian</p>
-          <div className="h-1 w-12 mx-auto rounded-full" style={{ backgroundColor: HEX_COLORS['bg-indigo-600'] }}></div>
+          <h1 style={styles.title}>Splitbill</h1>
+          <p style={styles.subtitle}>Ringkasan Pembagian</p>
+          <div style={styles.divider}></div>
         </div>
 
         {settlements.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest px-1" style={{ color: HEX_COLORS['text-gray-400'] }}>Penyelesaian</h2>
-            <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 space-y-4" style={{ backgroundColor: HEX_COLORS['bg-white'] }}>
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>Penyelesaian</h2>
+            <div style={styles.card}>
               {settlements.map((s, i) => (
-                <div key={i} className="flex items-center justify-between p-4 rounded-2xl" style={{ backgroundColor: HEX_COLORS['bg-indigo-50'] }}>
-                  <div className="flex items-center space-x-3">
-                    <span className="font-bold" style={{ color: HEX_COLORS['text-gray-900'] }}>{s.from}</span>
-                    <ChevronRight size={16} style={{ color: HEX_COLORS['text-indigo-400'] }} />
-                    <span className="font-bold" style={{ color: HEX_COLORS['text-gray-900'] }}>{s.to}</span>
+                <div key={i} style={{...styles.settlementItem, marginBottom: i === settlements.length - 1 ? '0' : '12px'}}>
+                  <div style={{display: 'flex', alignItems: 'center'}}>
+                    <span style={{fontWeight: '700', color: HEX_COLORS['text-gray-900']}}>{s.from}</span>
+                    <ChevronRight size={16} style={{ color: HEX_COLORS['text-indigo-400'], margin: '0 8px' }} />
+                    <span style={{fontWeight: '700', color: HEX_COLORS['text-gray-900']}}>{s.to}</span>
                   </div>
-                  <div className="font-black" style={{ color: HEX_COLORS['text-indigo-600'] }}>{formatCurrency(s.amount)}</div>
+                  <div style={{fontWeight: '900', color: HEX_COLORS['text-indigo-600']}}>{formatCurrency(s.amount)}</div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        <div className="space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-widest px-1" style={{ color: HEX_COLORS['text-gray-400'] }}>Total Per Orang</h2>
-          <div className="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-gray-100" style={{ backgroundColor: HEX_COLORS['bg-white'] }}>
-            <table className="w-full text-left border-collapse">
+        <div style={styles.section}>
+          <h2 style={styles.sectionTitle}>Total Per Orang</h2>
+          <div style={styles.tableContainer}>
+            <table style={styles.table}>
               <thead>
-                <tr className="border-b border-gray-100" style={{ backgroundColor: '#fcfcfd' }}>
-                  <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-wider" style={{ color: HEX_COLORS['text-gray-400'] }}>Nama</th>
-                  <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-wider text-right" style={{ color: HEX_COLORS['text-gray-400'] }}>Total</th>
+                <tr>
+                  <th style={styles.th}>Nama</th>
+                  <th style={{...styles.th, textAlign: 'right'}}>Total</th>
                 </tr>
               </thead>
               <tbody>
                 {totals.map((person, i) => (
-                  <tr key={person.id} className={i !== totals.length - 1 ? "border-b border-gray-50" : ""}>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center space-x-4">
+                  <tr key={person.id}>
+                    <td style={{...styles.td, borderBottom: i === totals.length - 1 ? 'none' : '1px solid #f9fafb'}}>
+                      <div style={{display: 'flex', alignItems: 'center'}}>
                         <div 
-                          className="w-3 h-3 rounded-full shadow-sm" 
-                          style={{ backgroundColor: HEX_COLORS[person.color] || '#000' }}
+                          style={{ 
+                            width: '12px', 
+                            height: '12px', 
+                            borderRadius: '9999px', 
+                            backgroundColor: HEX_COLORS[person.color] || '#000',
+                            marginRight: '16px',
+                            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                          }}
                         ></div>
-                        <span className="font-bold" style={{ color: HEX_COLORS['text-gray-900'] }}>{person.name}</span>
+                        <span style={{fontWeight: '700', color: HEX_COLORS['text-gray-900']}}>{person.name}</span>
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-right font-black" style={{ color: HEX_COLORS['text-indigo-600'] }}>
+                    <td style={{...styles.td, textAlign: 'right', fontWeight: '900', color: HEX_COLORS['text-indigo-600'], borderBottom: i === totals.length - 1 ? 'none' : '1px solid #f9fafb'}}>
                       {formatCurrency(person.finalTotal)}
                     </td>
                   </tr>
@@ -1292,8 +1435,8 @@ export default function App() {
               </tbody>
               <tfoot>
                 <tr style={{ backgroundColor: HEX_COLORS['bg-indigo-600'], color: HEX_COLORS['text-white'] }}>
-                  <td className="px-8 py-6 font-bold">Total Keseluruhan</td>
-                  <td className="px-8 py-6 text-right font-black text-xl">
+                  <td style={{padding: '24px 32px', fontWeight: '700'}}>Total Keseluruhan</td>
+                  <td style={{padding: '24px 32px', textAlign: 'right', fontWeight: '900', fontSize: '20px'}}>
                     {formatCurrency(totalBill)}
                   </td>
                 </tr>
@@ -1302,8 +1445,8 @@ export default function App() {
           </div>
         </div>
 
-        <div className="text-center pt-6 opacity-30">
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: HEX_COLORS['text-gray-400'] }}>Dibuat dengan Splitbill App</p>
+        <div style={styles.footer}>
+          <p style={{fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.3em', color: HEX_COLORS['text-gray-400']}}>Dibuat dengan Splitbill App</p>
         </div>
       </div>
     );
@@ -1334,13 +1477,24 @@ export default function App() {
               <p className="text-gray-500 text-sm mt-1">Ringkasan pembagian biaya</p>
             </div>
           </div>
-          <button 
-            onClick={handleShare}
-            disabled={isSharing}
-            className="bg-indigo-600 text-white p-3 rounded-2xl shadow-lg shadow-indigo-100 active:scale-95 transition-all disabled:opacity-50"
-          >
-            {isSharing ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}
-          </button>
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={handleDownload}
+              disabled={isSharing}
+              className="bg-gray-100 text-gray-700 p-3 rounded-2xl shadow-sm active:scale-95 transition-all disabled:opacity-50 flex items-center space-x-2"
+            >
+              <Download size={18} />
+              <span className="text-xs font-bold hidden sm:inline">Download</span>
+            </button>
+            <button 
+              onClick={handleNativeShare}
+              disabled={isSharing}
+              className="bg-indigo-600 text-white p-3 rounded-2xl shadow-lg shadow-indigo-100 active:scale-95 transition-all disabled:opacity-50 flex items-center space-x-2"
+            >
+              {isSharing ? <Loader2 size={18} className="animate-spin" /> : <Share2 size={18} />}
+              <span className="text-xs font-bold hidden sm:inline">Share</span>
+            </button>
+          </div>
         </div>
 
         {renderShareableView(totals)}
@@ -1411,7 +1565,7 @@ export default function App() {
                   className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 relative overflow-hidden"
                 >
                   <div className={`absolute left-0 top-0 bottom-0 w-2 ${person.color}`}></div>
-                  <div className="flex justify-between items-center mb-5">
+                  <div className="flex justify-between items-center">
                     <div className="flex items-center space-x-4">
                       <div className={`w-12 h-12 rounded-full ${person.color} flex items-center justify-center text-white font-bold text-lg shadow-inner`}>
                         {person.name.charAt(0).toUpperCase()}
@@ -1425,21 +1579,6 @@ export default function App() {
                       <div className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${person.balance > 0.01 ? 'text-emerald-500' : person.balance < -0.01 ? 'text-red-500' : 'text-gray-400'}`}>
                         {person.balance > 0.01 ? `Piutang ${formatCurrency(person.balance)}` : person.balance < -0.01 ? `Hutang ${formatCurrency(Math.abs(person.balance))}` : 'Lunas'}
                       </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3 text-xs text-gray-500 bg-gray-50 p-4 rounded-2xl">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Total Item</span>
-                      <span className="font-bold text-gray-900">{formatCurrency(person.itemTotal)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Pajak & Layanan</span>
-                      <span className="font-bold text-gray-900">{formatCurrency(person.taxShare + person.serviceShare)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-200 mt-2">
-                      <span className="font-medium">Sudah Dibayar</span>
-                      <span className="font-bold text-emerald-600">{formatCurrency(person.amountPaid)}</span>
                     </div>
                   </div>
                 </motion.div>
