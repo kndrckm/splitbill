@@ -419,15 +419,9 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
         </button>
         <button
           onClick={() => {
-            if (window.confirm('Hapus semua data dan mulai baru?')) {
-              setBills([]);
-              setPeople([]);
-              setPayments([]);
-              setTaxPercentage('0');
-              setServicePercentage('0');
-              setCurrentBillId(null);
-              setStep('UPLOAD');
+            if (window.confirm('Hapus semua data dan keluar dari sesi?')) {
               localStorage.removeItem('splitbill_state');
+              window.location.href = window.location.pathname;
             }
           }}
           className="w-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-200 font-bold py-4 px-6 rounded-xl transition-all active:scale-95 text-sm"

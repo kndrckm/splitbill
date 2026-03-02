@@ -36,8 +36,8 @@ export function useSharedSession(currentState: any) {
                 setIsConnected(true);
                 setLockedBy(data.lockedBy || null);
 
-                // If someone else is locking it, consume their state
-                if (data.lockedBy && data.lockedBy !== clientId) {
+                // If someone else is locking it, or no one is locking it, consume their state
+                if (data.lockedBy !== clientId) {
                     if (onUpdateRef.current && data.state) {
                         onUpdateRef.current(data.state);
                     }
