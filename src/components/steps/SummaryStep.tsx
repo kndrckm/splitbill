@@ -419,14 +419,14 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
         </button>
         <button
           onClick={() => {
-            if (window.confirm('Hapus semua data dan keluar dari sesi?')) {
+            if (window.confirm('Keluar dari sesi dan mulai baru? Data di sesi ini tetap aman untuk pengguna lain.')) {
               localStorage.removeItem('splitbill_state');
               window.location.href = window.location.pathname;
             }
           }}
           className="w-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-200 font-bold py-4 px-6 rounded-xl transition-all active:scale-95 text-sm"
         >
-          Mulai Baru
+          Mulai Baru / Keluar Sesi
         </button>
       </div>
       <AnimatePresence>
