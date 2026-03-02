@@ -23,6 +23,16 @@ export const UploadStep: React.FC<UploadStepProps> = ({
 }) => {
   const apiKeyAvailable = hasApiKey();
   const [sessionCode, setSessionCode] = React.useState('');
+  const [recentSessions, setRecentSessions] = React.useState<{ id: string, timestamp: number }[]>([]);
+
+  React.useEffect(() => {
+    try {
+      const historyStr = localStorage.getItem('splitbill_history');
+      if (historyStr) {
+        setRecentSessions(JSON.parse(historyStr));
+      }
+    } catch (e) { }
+  }, []);
 
   return (
     <motion.div
@@ -104,6 +114,28 @@ export const UploadStep: React.FC<UploadStepProps> = ({
                   Gabung
                 </button>
               </div>
+
+              {recentSessions.length > 0 && (
+                <div className="mt-5 text-left">
+                  <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 px-1">Sesi Terakhir Anda</p>
+                  <div className="flex flex-col space-y-2">
+                    {recentSessions.map((hist) => (
+                      <button
+                        key={hist.id}
+                        onClick={() => handleJoinSession(hist.id)}
+                        className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/50 dark:hover:bg-gray-800 border border-gray-100 dark:border-gray-800 py-2 px-3 rounded-xl transition-colors active:scale-95"
+                      >
+                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                          Sesi <span className="text-indigo-500">#{hist.id.substring(0, 5)}</span>
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-medium">
+                          {new Date(hist.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

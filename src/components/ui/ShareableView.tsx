@@ -51,8 +51,8 @@ export const ShareableView: React.FC<ShareableViewProps> = ({ shareRef, bills, p
     <div className="fixed -left-[9999px] top-0">
       <div
         ref={shareRef}
-        className="w-[360px] p-6 font-sans bg-white shadow-xl"
-        style={{ color: '#111827' }}
+        className="p-6 font-sans bg-white shadow-xl"
+        style={{ color: '#111827', width: '360px', maxWidth: '360px', overflow: 'hidden' }}
       >
         <div className="mb-6">
           <h2 className="text-sm font-bold tracking-widest uppercase mb-3" style={{ color: '#6b7280' }}>Penyelesaian</h2>

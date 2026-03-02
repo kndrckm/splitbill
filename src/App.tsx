@@ -22,6 +22,7 @@ import { RestoreStep } from './components/steps/RestoreStep';
 // UI
 import { ShareableView } from './components/ui/ShareableView';
 import { ApiKeyModal } from './components/ui/ApiKeyModal';
+import { UsernameModal } from './components/ui/UsernameModal';
 
 export default function App() {
   const {
@@ -50,7 +51,27 @@ export default function App() {
   const [pendingState, setPendingState] = useState<any>(null);
   const [previousStep, setPreviousStep] = useState<Step | null>(null);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [pendingImageDataUrl, setPendingImageDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (sessionId && isConnected) {
+      const savedName = localStorage.getItem('splitbill_username');
+      const savedColor = localStorage.getItem('splitbill_color');
+      if (savedName && savedColor) {
+        sharedSession.joinSessionPresence(savedName, savedColor);
+      } else {
+        setShowUsernameModal(true);
+      }
+    }
+  }, [sessionId, isConnected]);
+
+  const handleSaveUsername = (name: string, color: string) => {
+    localStorage.setItem('splitbill_username', name);
+    localStorage.setItem('splitbill_color', color);
+    sharedSession.joinSessionPresence(name, color);
+    setShowUsernameModal(false);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -212,6 +233,7 @@ export default function App() {
       if (people.length === 0) {
         setPeople([{ id: generateId(), name: 'Saya', color: COLORS[0] }]);
       }
+      setReceiptImage(null); // free up memory
       handleSetStep('BILL_NAME');
     } catch (err: any) {
       setError(err.message || 'Gagal memproses nota. Periksa API key Anda.');
@@ -542,8 +564,12 @@ export default function App() {
       </div>
       <ApiKeyModal
         isOpen={showApiKeyModal}
+        onSave={handleApiKeySaved}
         onClose={() => setShowApiKeyModal(false)}
-        onKeySaved={handleApiKeySaved}
+      />
+      <UsernameModal
+        isOpen={showUsernameModal}
+        onSave={handleSaveUsername}
       />
     </div>
   );

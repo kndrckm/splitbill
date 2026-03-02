@@ -5,9 +5,17 @@ import { generateId } from '../utils';
 
 export function useSharedSession(currentState: any) {
     const [sessionId, setSessionId] = useState<string | null>(null);
-    const [clientId] = useState(() => generateId());
+    const [clientId] = useState(() => {
+        let saved = localStorage.getItem('splitbill_uid');
+        if (!saved) {
+            saved = generateId();
+            localStorage.setItem('splitbill_uid', saved);
+        }
+        return saved;
+    });
     const [isConnected, setIsConnected] = useState(false);
     const [lockedBy, setLockedBy] = useState<string | null>(null);
+    const [activeUsers, setActiveUsers] = useState<{ uid: string, name: string, color: string }[]>([]);
 
     const onUpdateRef = useRef<((state: any) => void) | null>(null);
 
@@ -19,6 +27,22 @@ export function useSharedSession(currentState: any) {
             setSessionId(session);
         }
     }, []);
+
+    // Track session history
+    useEffect(() => {
+        if (sessionId) {
+            try {
+                const historyStr = localStorage.getItem('splitbill_history');
+                let history: { id: string; timestamp: number }[] = historyStr ? JSON.parse(historyStr) : [];
+                history = history.filter(h => h.id !== sessionId);
+                history.unshift({ id: sessionId, timestamp: Date.now() });
+                if (history.length > 5) history = history.slice(0, 5);
+                localStorage.setItem('splitbill_history', JSON.stringify(history));
+            } catch (e) {
+                console.error("Failed to save session history", e);
+            }
+        }
+    }, [sessionId]);
 
     // Sync with Firebase
     useEffect(() => {
@@ -33,6 +57,16 @@ export function useSharedSession(currentState: any) {
         const unsubscribe = onValue(sessionRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
+                if (data.createdAt && typeof data.createdAt === 'number') {
+                    const ageMs = Date.now() - data.createdAt;
+                    if (ageMs > 24 * 60 * 60 * 1000) {
+                        set(sessionRef, null);
+                        alert('Sesi ini sudah lebih dari 24 jam dan telah dihapus dari cloud demi keamanan.');
+                        window.location.href = window.location.pathname;
+                        return;
+                    }
+                }
+
                 setIsConnected(true);
                 setLockedBy(data.lockedBy || null);
 
@@ -42,11 +76,34 @@ export function useSharedSession(currentState: any) {
                         onUpdateRef.current(data.state);
                     }
                 }
+            } else {
+                // If data is suddenly null (wiped by owner or expired)
+                if (isConnected) {
+                    alert('Sesi ini telah dihapus atau kedaluwarsa.');
+                    window.location.href = window.location.pathname;
+                }
+            }
+        });
+
+        // Sync Presence
+        const presenceListRef = ref(database, `sessions/${sessionId}/presence`);
+        const unsubPresence = onValue(presenceListRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const users = Object.entries(data).map(([uid, val]: any) => ({
+                    uid,
+                    name: val.name,
+                    color: val.color
+                }));
+                setActiveUsers(users);
+            } else {
+                setActiveUsers([]);
             }
         });
 
         return () => {
             unsubscribe();
+            unsubPresence();
             onDisconnect(lockRef).cancel(); // cleanup
         };
     }, [sessionId, clientId]);
@@ -89,6 +146,13 @@ export function useSharedSession(currentState: any) {
         set(lockRef, null);
     };
 
+    const joinSessionPresence = (name: string, color: string) => {
+        if (!sessionId) return;
+        const presenceRef = ref(database, `sessions/${sessionId}/presence/${clientId}`);
+        set(presenceRef, { name, color, lastSeen: serverTimestamp() });
+        onDisconnect(presenceRef).remove();
+    };
+
     return {
         sessionId,
         clientId,
@@ -99,6 +163,8 @@ export function useSharedSession(currentState: any) {
         createSession,
         takeLock,
         releaseLock,
+        joinSessionPresence,
+        activeUsers,
         setOnStateUpdate: (callback: (state: any) => void) => {
             onUpdateRef.current = callback;
         }

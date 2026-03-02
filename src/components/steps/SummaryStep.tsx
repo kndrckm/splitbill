@@ -120,10 +120,11 @@ type SummaryStepProps = {
   startCamera: () => void;
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleManualInput: () => void;
+  activeUsers?: { uid: string, name: string, color: string }[];
 };
 
 export const SummaryStep: React.FC<SummaryStepProps> = ({
-  darkMode, setDarkMode, bills, people, payments, setBills, setPeople, setPayments, setStep, setCurrentBillId, formatCurrency, totalBill, totals, shareRef, handleShare, handleDownload, isSharing, setTaxPercentage, setServicePercentage, sessionId, isInputDisabled, startCamera, handleFileUpload, handleManualInput
+  darkMode, setDarkMode, bills, people, payments, setBills, setPeople, setPayments, setStep, setCurrentBillId, formatCurrency, totalBill, totals, shareRef, handleShare, handleDownload, isSharing, setTaxPercentage, setServicePercentage, sessionId, isInputDisabled, startCamera, handleFileUpload, handleManualInput, activeUsers = []
 }) => {
   const hasUnassigned = bills.some(b => b.items.some(i => i.sharedBy.length === 0));
   const unassignedItemsCount = bills.reduce((acc, b) => acc + b.items.filter(i => i.sharedBy.length === 0).length, 0);
@@ -226,10 +227,18 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
         <div className="text-center">
           <div className="flex items-center justify-center space-x-2">
             <h2 className="font-black text-gray-900 dark:text-white text-base tracking-tight">Summary</h2>
-            {sessionId && (
-              <div className="flex -space-x-1" title="User lain sedang dalam sesi yang sama">
-                <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-[10px] border border-white dark:border-gray-950 z-10">🐒</div>
-                <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center text-[10px] border border-white dark:border-gray-950 z-0">🐱</div>
+            {sessionId && activeUsers.length > 0 && (
+              <div className="flex -space-x-1" title={`${activeUsers.length} user live di sesi ini`}>
+                {activeUsers.slice(0, 3).map((u, i) => (
+                  <div key={u.uid} className={`w-5 h-5 rounded-full ${u.color} flex items-center justify-center text-[10px] font-bold text-white border border-white dark:border-gray-950 shadow-sm`} style={{ zIndex: 10 - i }}>
+                    {u.name.substring(0, 1).toUpperCase()}
+                  </div>
+                ))}
+                {activeUsers.length > 3 && (
+                  <div className="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[8px] font-bold text-gray-500 border border-white dark:border-gray-950 z-0">
+                    +{activeUsers.length - 3}
+                  </div>
+                )}
               </div>
             )}
           </div>
