@@ -13,13 +13,15 @@ type UploadStepProps = {
   handleManualInput: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onOpenApiKeyModal: () => void;
+  handleJoinSession: (code: string) => void;
   isInputDisabled?: boolean;
 };
 
 export const UploadStep: React.FC<UploadStepProps> = ({
-  darkMode, setDarkMode, error, startCamera, handleFileUpload, handleManualInput, fileInputRef, onOpenApiKeyModal, isInputDisabled
+  darkMode, setDarkMode, error, startCamera, handleFileUpload, handleManualInput, fileInputRef, onOpenApiKeyModal, handleJoinSession, isInputDisabled
 }) => {
   const apiKeyAvailable = hasApiKey();
+  const [sessionCode, setSessionCode] = React.useState('');
 
   return (
     <motion.div
@@ -43,7 +45,7 @@ export const UploadStep: React.FC<UploadStepProps> = ({
       </div>
       <div>
         <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-1 tracking-tight">SplitBill</h1>
-        <p className="text-gray-500 dark:text-gray-400 max-w-[280px] mx-auto leading-relaxed text-sm">Cara termudah untuk bagi tagihan. Foto, bagi, dan bereskan.</p>
+        <p className="text-gray-500 dark:text-gray-400 max-w-[280px] mx-auto leading-relaxed text-sm">Biar Agem bisa uninstall Line, yang ini bisa dishare link loh.</p>
       </div>
 
       {error && (
@@ -83,6 +85,25 @@ export const UploadStep: React.FC<UploadStepProps> = ({
             <Plus size={16} />
             <span>Input Manual</span>
           </button>
+        </div>
+
+        <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+          <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Atau Gabung Sesi</p>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              value={sessionCode}
+              onChange={(e) => setSessionCode(e.target.value)}
+              placeholder="Kode Sesi (e.g. a1b2c3d)"
+              className="flex-1 bg-gray-50 dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 focus:border-indigo-500 dark:focus:border-indigo-600 py-3 px-4 rounded-xl text-sm font-bold text-gray-900 dark:text-white focus:outline-none transition-all"
+            />
+            <button
+              onClick={() => handleJoinSession(sessionCode)}
+              className="bg-gray-900 dark:bg-indigo-600 text-white px-4 rounded-xl font-bold text-sm active:scale-95 transition-all"
+            >
+              Gabung
+            </button>
+          </div>
         </div>
 
         <input

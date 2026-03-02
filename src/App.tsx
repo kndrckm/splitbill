@@ -234,6 +234,18 @@ export default function App() {
     handleSetStep('BILL_NAME');
   };
 
+  const handleJoinSession = async (code: string) => {
+    if (!code.trim()) return;
+    setError(null);
+    try {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('session', code);
+      window.location.href = currentUrl.toString();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   const addPerson = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPersonName.trim()) return;
@@ -341,47 +353,34 @@ export default function App() {
     <div className="min-h-screen bg-gray-900 dark:bg-black flex justify-center font-sans overflow-hidden">
       <div className="w-full max-w-md bg-white dark:bg-gray-950 h-screen shadow-2xl overflow-hidden relative flex flex-col">
         { /* Shared Session Banner Display logic */}
-        {step !== 'RESTORE' && (
+        {step !== 'RESTORE' && sessionId && (
           <div className="w-full z-50">
-            {sessionId ? (
-              <div className={`px-4 py-3 text-sm font-bold flex items-center justify-between ${isLockedByOther ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
-                <div className="flex items-center space-x-2">
-                  {isLockedByOther ? <AlertCircle size={16} /> : <Check size={16} />}
-                  <span>
-                    {isLockedByOther ? 'Orang lain sedang mengedit...' : 'Anda sedang mengedit.'}
-                  </span>
-                </div>
-                {isLockedByOther ? (
-                  <button onClick={sharedSession.takeLock} className="px-3 py-1 bg-amber-600 text-white rounded-lg text-xs shadow-sm ml-2 whitespace-nowrap active:scale-95 transition-transform">
-                    AMBIL ALIH
-                  </button>
-                ) : (
-                  <div className="flex space-x-2">
-                    <button onClick={() => {
-                      const url = window.location.href;
-                      navigator.clipboard.writeText(url);
-                      alert('Link sesi disalin: ' + url);
-                    }} className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs shadow-sm ml-2 whitespace-nowrap active:scale-95 transition-transform flex items-center gap-1">
-                      <Share2 size={12} /> Link
-                    </button>
-                    <button onClick={sharedSession.releaseLock} className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs shadow-sm whitespace-nowrap active:scale-95 transition-transform">
-                      LEPASKAN
-                    </button>
-                  </div>
-                )}
+            <div className={`px-4 py-3 text-sm font-bold flex items-center justify-between ${isLockedByOther ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
+              <div className="flex items-center space-x-2">
+                {isLockedByOther ? <AlertCircle size={16} /> : <Check size={16} />}
+                <span>
+                  {isLockedByOther ? 'Orang lain sedang mengedit...' : 'Anda sedang mengedit.'}
+                </span>
               </div>
-            ) : (
-              <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-between border-b border-indigo-100 dark:border-indigo-800">
-                <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">Berkolaborasi dengan teman?</span>
-                <button
-                  onClick={sharedSession.createSession}
-                  className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-transform flex items-center space-x-1"
-                >
-                  <Share2 size={12} />
-                  <span>Buat Sesi</span>
+              {isLockedByOther ? (
+                <button onClick={sharedSession.takeLock} className="px-3 py-1 bg-amber-600 text-white rounded-lg text-xs shadow-sm ml-2 whitespace-nowrap active:scale-95 transition-transform">
+                  AMBIL ALIH
                 </button>
-              </div>
-            )}
+              ) : (
+                <div className="flex space-x-2">
+                  <button onClick={() => {
+                    const url = window.location.href;
+                    navigator.clipboard.writeText(url);
+                    alert('Link sesi disalin: ' + url);
+                  }} className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs shadow-sm ml-2 whitespace-nowrap active:scale-95 transition-transform flex items-center gap-1">
+                    <Share2 size={12} /> Link
+                  </button>
+                  <button onClick={sharedSession.releaseLock} className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs shadow-sm whitespace-nowrap active:scale-95 transition-transform">
+                    LEPASKAN
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -406,6 +405,7 @@ export default function App() {
               handleFileUpload={handleFileUpload}
               handleManualInput={handleManualInput}
               fileInputRef={fileInputRef}
+              handleJoinSession={handleJoinSession}
               onOpenApiKeyModal={() => setShowApiKeyModal(true)}
               isInputDisabled={isInputDisabled}
             />
