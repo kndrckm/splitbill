@@ -113,6 +113,13 @@ export default function App() {
     }
   }, []);
 
+  // Auto-create session if bills exist but no session ID is present
+  useEffect(() => {
+    if (bills.length > 0 && !sessionId) {
+      sharedSession.createSession();
+    }
+  }, [bills.length, sessionId]);
+
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -508,6 +515,9 @@ export default function App() {
               setServicePercentage={setServicePercentage}
               sessionId={sharedSession.sessionId}
               isInputDisabled={isInputDisabled}
+              startCamera={startCamera}
+              handleFileUpload={handleFileUpload}
+              handleManualInput={handleManualInput}
             />
           )}
         </AnimatePresence>

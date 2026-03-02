@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, ChevronLeft, Plus, Share2, Download, AlertCircle, Pencil, Trash2, Check, Link as LinkIcon, Copy } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Plus, Share2, Download, AlertCircle, Pencil, Trash2, Check, Link as LinkIcon, Copy, X, Camera, Upload } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { encodeShareData } from '../../utils/shareUtils';
 import { ReceiptData, Person, Payment, ANIMALS } from '../../types';
@@ -117,16 +117,22 @@ type SummaryStepProps = {
   setServicePercentage: (val: string) => void;
   sessionId?: string | null;
   isInputDisabled?: boolean;
+  startCamera: () => void;
+  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleManualInput: () => void;
 };
 
 export const SummaryStep: React.FC<SummaryStepProps> = ({
-  darkMode, setDarkMode, bills, people, payments, setBills, setPeople, setPayments, setStep, setCurrentBillId, formatCurrency, totalBill, totals, shareRef, handleShare, handleDownload, isSharing, setTaxPercentage, setServicePercentage, sessionId, isInputDisabled
+  darkMode, setDarkMode, bills, people, payments, setBills, setPeople, setPayments, setStep, setCurrentBillId, formatCurrency, totalBill, totals, shareRef, handleShare, handleDownload, isSharing, setTaxPercentage, setServicePercentage, sessionId, isInputDisabled, startCamera, handleFileUpload, handleManualInput
 }) => {
   const hasUnassigned = bills.some(b => b.items.some(i => i.sharedBy.length === 0));
   const unassignedItemsCount = bills.reduce((acc, b) => acc + b.items.filter(i => i.sharedBy.length === 0).length, 0);
 
   const [isCopied, setIsCopied] = React.useState(false);
   const [isCopiedId, setIsCopiedId] = React.useState(false);
+
+  const [showAddModal, setShowAddModal] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleCopyLink = () => {
     const payload = { bills, people, payments, totals };
@@ -410,8 +416,9 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
 
       <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 space-y-2">
         <button
-          onClick={() => setStep('UPLOAD')}
-          className="w-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95 text-sm"
+          onClick={() => setShowAddModal(true)}
+          disabled={isInputDisabled}
+          className="w-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus size={18} />
           <span>Tambah Nota Lain</span>
@@ -434,6 +441,73 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
           Mulai Baru
         </button>
       </div>
+      <AnimatePresence>
+        {showAddModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAddModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-gray-950 rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-black text-xl text-gray-900 dark:text-white">Tambah Nota</h3>
+                <button onClick={() => setShowAddModal(false)} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors bg-gray-100 dark:bg-gray-800 rounded-full">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => { setShowAddModal(false); startCamera(); }}
+                  disabled={isInputDisabled}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold py-4 px-6 rounded-2xl flex items-center justify-center space-x-3 transition-all active:scale-95 shadow-lg shadow-indigo-200 dark:shadow-none"
+                >
+                  <Camera size={20} />
+                  <span className="text-base">Ambil Foto Nota</span>
+                </button>
+
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => { fileInputRef.current?.click(); }}
+                    disabled={isInputDisabled}
+                    className="flex-1 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 text-gray-700 dark:text-gray-300 font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95 text-sm"
+                  >
+                    <Upload size={16} />
+                    <span>Upload Foto</span>
+                  </button>
+                  <button
+                    onClick={() => { setShowAddModal(false); handleManualInput(); }}
+                    disabled={isInputDisabled}
+                    className="flex-1 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 text-gray-700 dark:text-gray-300 font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95 text-sm"
+                  >
+                    <Plus size={16} />
+                    <span>Input Manual</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={(e) => {
+          setShowAddModal(false);
+          handleFileUpload(e);
+        }}
+        accept="image/*"
+        className="hidden"
+      />
     </motion.div>
   );
 };
