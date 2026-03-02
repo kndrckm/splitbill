@@ -3,7 +3,9 @@ import { Step, ReceiptData, Person, Payment, DistributionMode } from '../types';
 import { useSharedSession } from './useSharedSession';
 
 export const useBillSplit = () => {
-  const [step, setStep] = useState<Step>('UPLOAD');
+  const [step, setStep] = useState<Step>(() => {
+    return new URLSearchParams(window.location.search).get('session') ? 'SUMMARY' : 'UPLOAD';
+  });
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [bills, setBills] = useState<ReceiptData[]>([]);
   const [currentBillId, setCurrentBillId] = useState<string | null>(null);
@@ -41,6 +43,11 @@ export const useBillSplit = () => {
     if (savedTheme === 'dark') setDarkMode(true);
     else if (savedTheme === 'light') setDarkMode(false);
     else if (window.matchMedia('(prefers-color-scheme: dark)').matches) setDarkMode(true);
+
+    if (new URLSearchParams(window.location.search).get('session')) {
+      setIsInitialized(true);
+      return; // Skip loading local storage if joining a session directly
+    }
 
     if (saved) {
       try {

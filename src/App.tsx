@@ -94,7 +94,14 @@ export default function App() {
       }
     }
 
-    // 2. Fallback to localStorage
+    // 2. Try to load from session parameter
+    if (queryParams.get('session')) {
+      setStep('SUMMARY');
+      setIsInitialized(true);
+      return;
+    }
+
+    // 3. Fallback to localStorage
     const saved = localStorage.getItem('splitbill_state');
     if (saved) {
       try {
@@ -391,136 +398,138 @@ export default function App() {
           </div>
         )}
 
-        <AnimatePresence mode="wait">
-          {step === 'RESTORE' && (
-            <RestoreStep
-              pendingState={pendingState}
-              setBills={setBills}
-              setPeople={setPeople}
-              setPayments={setPayments}
-              setStep={handleSetStep}
-              setCurrentBillId={setCurrentBillId}
-              setIsInitialized={setIsInitialized}
-            />
-          )}
-          {step === 'UPLOAD' && (
-            <UploadStep
-              darkMode={darkMode}
-              setDarkMode={setDarkMode}
-              error={error}
-              startCamera={startCamera}
-              handleFileUpload={handleFileUpload}
-              handleManualInput={handleManualInput}
-              fileInputRef={fileInputRef}
-              handleJoinSession={handleJoinSession}
-              onOpenApiKeyModal={() => setShowApiKeyModal(true)}
-              isInputDisabled={isInputDisabled}
-              sessionId={sessionId}
-            />
-          )}
-          {step === 'BILL_NAME' && (
-            <BillNameStep
-              darkMode={darkMode}
-              setDarkMode={setDarkMode}
-              currentBill={currentBill}
-              setBills={setBills}
-              bills={bills}
-              setStep={handleSetStep}
-              people={people}
-              setPeople={setPeople}
-              newPersonName={newPersonName}
-              setNewPersonName={setNewPersonName}
-              addPerson={addPerson}
-              removePerson={removePerson}
-              onBack={handleBillNameBack}
-              isInputDisabled={isInputDisabled}
-            />
-          )}
-          {step === 'CAMERA' && (
-            <CameraStep
-              videoRef={videoRef}
-              stopCamera={stopCamera}
-              takePhoto={takePhoto}
-            />
-          )}
-          {step === 'PROCESSING' && (
-            <ProcessingStep receiptImage={receiptImage} />
-          )}
-          {step === 'ASSIGN_ITEMS' && (
-            <AssignItemsStep
-              darkMode={darkMode}
-              setDarkMode={setDarkMode}
-              currentBill={currentBill}
-              people={people}
-              setBills={setBills}
-              bills={bills}
-              setStep={handleSetStep}
-              formatCurrency={formatCurrency}
-              toggleItemShare={toggleItemShare}
-              selectAllPeopleForItem={selectAllPeopleForItem}
-              generateId={generateId}
-              isInputDisabled={isInputDisabled}
-            />
-          )}
-          {step === 'TAX_SERVICE' && (
-            <TaxServiceStep
-              darkMode={darkMode}
-              setDarkMode={setDarkMode}
-              currentBill={currentBill}
-              setBills={setBills}
-              bills={bills}
-              setStep={handleSetStep}
-              formatCurrency={formatCurrency}
-              taxPercentage={taxPercentage}
-              setTaxPercentage={setTaxPercentage}
-              servicePercentage={servicePercentage}
-              setServicePercentage={setServicePercentage}
-              isInputDisabled={isInputDisabled}
-            />
-          )}
-          {step === 'PAYMENTS' && (
-            <PaymentsStep
-              darkMode={darkMode}
-              setDarkMode={setDarkMode}
-              people={people}
-              payments={payments}
-              setPayments={setPayments}
-              setStep={handleSetStep}
-              formatCurrency={formatCurrency}
-              totalBill={totalBill}
-              generateId={generateId}
-              isInputDisabled={isInputDisabled}
-            />
-          )}
-          {step === 'SUMMARY' && (
-            <SummaryStep
-              darkMode={darkMode}
-              setDarkMode={setDarkMode}
-              bills={bills}
-              people={people}
-              payments={payments}
-              setBills={setBills}
-              setPeople={setPeople}
-              setPayments={setPayments}
-              setStep={handleSetStep}
-              setCurrentBillId={setCurrentBillId}
-              formatCurrency={formatCurrency}
-              totalBill={totalBill}
-              totals={totals}
-              shareRef={shareRef}
-              handleShare={handleShare}
-              handleDownload={handleDownload}
-              isSharing={isSharing}
-              setTaxPercentage={setTaxPercentage}
-              setServicePercentage={setServicePercentage}
-              sessionId={sharedSession.sessionId}
-              isInputDisabled={isInputDisabled}
-              startCamera={startCamera}
-              handleFileUpload={handleFileUpload}
-              handleManualInput={handleManualInput}
-            />
-          )}
-        </AnimatePresence>
+        <div className="flex-1 relative overflow-hidden flex flex-col">
+          <AnimatePresence mode="wait">
+            {step === 'RESTORE' && (
+              <RestoreStep
+                pendingState={pendingState}
+                setBills={setBills}
+                setPeople={setPeople}
+                setPayments={setPayments}
+                setStep={handleSetStep}
+                setCurrentBillId={setCurrentBillId}
+                setIsInitialized={setIsInitialized}
+              />
+            )}
+            {step === 'UPLOAD' && (
+              <UploadStep
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                error={error}
+                startCamera={startCamera}
+                handleFileUpload={handleFileUpload}
+                handleManualInput={handleManualInput}
+                fileInputRef={fileInputRef}
+                handleJoinSession={handleJoinSession}
+                onOpenApiKeyModal={() => setShowApiKeyModal(true)}
+                isInputDisabled={isInputDisabled}
+                sessionId={sessionId}
+              />
+            )}
+            {step === 'BILL_NAME' && (
+              <BillNameStep
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                currentBill={currentBill}
+                setBills={setBills}
+                bills={bills}
+                setStep={handleSetStep}
+                people={people}
+                setPeople={setPeople}
+                newPersonName={newPersonName}
+                setNewPersonName={setNewPersonName}
+                addPerson={addPerson}
+                removePerson={removePerson}
+                onBack={handleBillNameBack}
+                isInputDisabled={isInputDisabled}
+              />
+            )}
+            {step === 'CAMERA' && (
+              <CameraStep
+                videoRef={videoRef}
+                stopCamera={stopCamera}
+                takePhoto={takePhoto}
+              />
+            )}
+            {step === 'PROCESSING' && (
+              <ProcessingStep receiptImage={receiptImage} />
+            )}
+            {step === 'ASSIGN_ITEMS' && (
+              <AssignItemsStep
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                currentBill={currentBill}
+                people={people}
+                setBills={setBills}
+                bills={bills}
+                setStep={handleSetStep}
+                formatCurrency={formatCurrency}
+                toggleItemShare={toggleItemShare}
+                selectAllPeopleForItem={selectAllPeopleForItem}
+                generateId={generateId}
+                isInputDisabled={isInputDisabled}
+              />
+            )}
+            {step === 'TAX_SERVICE' && (
+              <TaxServiceStep
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                currentBill={currentBill}
+                setBills={setBills}
+                bills={bills}
+                setStep={handleSetStep}
+                formatCurrency={formatCurrency}
+                taxPercentage={taxPercentage}
+                setTaxPercentage={setTaxPercentage}
+                servicePercentage={servicePercentage}
+                setServicePercentage={setServicePercentage}
+                isInputDisabled={isInputDisabled}
+              />
+            )}
+            {step === 'PAYMENTS' && (
+              <PaymentsStep
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                people={people}
+                payments={payments}
+                setPayments={setPayments}
+                setStep={handleSetStep}
+                formatCurrency={formatCurrency}
+                totalBill={totalBill}
+                generateId={generateId}
+                isInputDisabled={isInputDisabled}
+              />
+            )}
+            {step === 'SUMMARY' && (
+              <SummaryStep
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                bills={bills}
+                people={people}
+                payments={payments}
+                setBills={setBills}
+                setPeople={setPeople}
+                setPayments={setPayments}
+                setStep={handleSetStep}
+                setCurrentBillId={setCurrentBillId}
+                formatCurrency={formatCurrency}
+                totalBill={totalBill}
+                totals={totals}
+                shareRef={shareRef}
+                handleShare={handleShare}
+                handleDownload={handleDownload}
+                isSharing={isSharing}
+                setTaxPercentage={setTaxPercentage}
+                setServicePercentage={setServicePercentage}
+                sessionId={sharedSession.sessionId}
+                isInputDisabled={isInputDisabled}
+                startCamera={startCamera}
+                handleFileUpload={handleFileUpload}
+                handleManualInput={handleManualInput}
+              />
+            )}
+          </AnimatePresence>
+        </div>
         <canvas ref={canvasRef} className="hidden" />
         <ShareableView
           shareRef={shareRef}
