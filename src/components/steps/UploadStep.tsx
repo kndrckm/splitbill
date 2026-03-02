@@ -24,7 +24,7 @@ export const UploadStep: React.FC<UploadStepProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col items-center justify-center h-full p-6 text-center space-y-6 dark:bg-gray-950"
+      className="relative flex flex-col items-center justify-center h-full p-6 text-center space-y-6 dark:bg-gray-950"
     >
       <div className="absolute top-4 right-4">
         <ThemeToggle darkMode={darkMode} setDarkMode={setDarkMode} />
@@ -99,6 +99,12 @@ export const UploadStep: React.FC<UploadStepProps> = ({
           accept="image/*" 
           className="hidden" 
         />
+
+        <div className="absolute bottom-6 left-0 right-0 text-center">
+          <p className="text-[10px] font-bold text-gray-300 dark:text-gray-700 uppercase tracking-[0.2em]">
+            Version 1.2.4 • Last updated: March 2, 2026
+          </p>
+        </div>
       </div>
     </motion.div>
   );
