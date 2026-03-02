@@ -61,7 +61,7 @@ const SortableBillItem: React.FC<SortableBillItemProps> = ({ bill, setCurrentBil
           <span className="font-bold text-gray-900 dark:text-white text-sm">{bill.name}</span>
           <span className="text-[10px] text-gray-500">{bill.items.length} item</span>
         </div>
-        <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
           {!isInputDisabled && (
             <>
               <button
@@ -218,7 +218,15 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
           <ChevronLeft size={20} />
         </button>
         <div className="text-center">
-          <h2 className="font-black text-gray-900 dark:text-white text-base tracking-tight">Hasil Akhir</h2>
+          <div className="flex items-center justify-center space-x-2">
+            <h2 className="font-black text-gray-900 dark:text-white text-base tracking-tight">Summary</h2>
+            {sessionId && (
+              <div className="flex -space-x-1" title="User lain sedang dalam sesi yang sama">
+                <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-[10px] border border-white dark:border-gray-950 z-10">🐒</div>
+                <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center text-[10px] border border-white dark:border-gray-950 z-0">🐱</div>
+              </div>
+            )}
+          </div>
           {sessionId && (
             <div className="flex items-center justify-center space-x-2">
               <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-black uppercase tracking-widest">ID: {sessionId}</p>
@@ -393,7 +401,7 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
               </SortableContext>
             </DndContext>
             <div className="flex justify-between font-black text-base text-indigo-600 dark:text-indigo-400 pt-3 px-1">
-              <span>Total Keseluruhan</span>
+              <span>Total Pengeluaran</span>
               <span>{formatCurrency(totalBill)}</span>
             </div>
           </div>

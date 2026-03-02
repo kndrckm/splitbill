@@ -15,10 +15,11 @@ type UploadStepProps = {
   onOpenApiKeyModal: () => void;
   handleJoinSession: (code: string) => void;
   isInputDisabled?: boolean;
+  sessionId?: string | null;
 };
 
 export const UploadStep: React.FC<UploadStepProps> = ({
-  darkMode, setDarkMode, error, startCamera, handleFileUpload, handleManualInput, fileInputRef, onOpenApiKeyModal, handleJoinSession, isInputDisabled
+  darkMode, setDarkMode, error, startCamera, handleFileUpload, handleManualInput, fileInputRef, onOpenApiKeyModal, handleJoinSession, isInputDisabled, sessionId
 }) => {
   const apiKeyAvailable = hasApiKey();
   const [sessionCode, setSessionCode] = React.useState('');
@@ -87,24 +88,26 @@ export const UploadStep: React.FC<UploadStepProps> = ({
           </button>
         </div>
 
-        <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-          <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Atau Gabung Sesi</p>
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              value={sessionCode}
-              onChange={(e) => setSessionCode(e.target.value)}
-              placeholder="Kode Sesi (e.g. a1b2c3d)"
-              className="flex-1 bg-gray-50 dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 focus:border-indigo-500 dark:focus:border-indigo-600 py-3 px-4 rounded-xl text-sm font-bold text-gray-900 dark:text-white focus:outline-none transition-all"
-            />
-            <button
-              onClick={() => handleJoinSession(sessionCode)}
-              className="bg-gray-900 dark:bg-indigo-600 text-white px-4 rounded-xl font-bold text-sm active:scale-95 transition-all"
-            >
-              Gabung
-            </button>
+        {!sessionId && (
+          <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Atau Gabung Sesi</p>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={sessionCode}
+                onChange={(e) => setSessionCode(e.target.value)}
+                placeholder="Kode Sesi (e.g. a1b2c3d)"
+                className="flex-1 bg-gray-50 dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 focus:border-indigo-500 dark:focus:border-indigo-600 py-3 px-4 rounded-xl text-sm font-bold text-gray-900 dark:text-white focus:outline-none transition-all"
+              />
+              <button
+                onClick={() => handleJoinSession(sessionCode)}
+                className="bg-gray-900 dark:bg-indigo-600 text-white px-4 rounded-xl font-bold text-sm active:scale-95 transition-all"
+              >
+                Gabung
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <input
           type="file"

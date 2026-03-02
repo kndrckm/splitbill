@@ -408,6 +408,7 @@ export default function App() {
               handleJoinSession={handleJoinSession}
               onOpenApiKeyModal={() => setShowApiKeyModal(true)}
               isInputDisabled={isInputDisabled}
+              sessionId={sessionId}
             />
           )}
           {step === 'BILL_NAME' && (
