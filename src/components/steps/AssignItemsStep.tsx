@@ -164,8 +164,8 @@ export const AssignItemsStep: React.FC<AssignItemsStepProps> = ({
                         disabled={isInputDisabled}
                         onClick={() => toggleItemShare(item.id, person.id)}
                         className={`flex items-center space-x-1.5 px-2 py-1.5 rounded-lg border-2 transition-all active:scale-95 disabled:opacity-50 ${isShared
-                            ? `${person.color} border-transparent text-white shadow-sm`
-                            : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:border-indigo-100 dark:hover:border-indigo-900'
+                          ? `${person.color} border-transparent text-white shadow-sm`
+                          : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:border-indigo-100 dark:hover:border-indigo-900'
                           }`}
                       >
                         <div className={`w-4 h-4 rounded-full ${isShared ? 'bg-white/20' : person.color} flex items-center justify-center text-[8px] font-bold`}>
@@ -192,7 +192,7 @@ export const AssignItemsStep: React.FC<AssignItemsStepProps> = ({
         )}
       </div>
 
-      <div className="p-4 bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-900 shadow-xl">
+      <div className="p-4 bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-900 shadow-xl shrink-0 z-10">
         <div className="flex justify-between items-center mb-3">
           <div className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">Subtotal Nota</div>
           <div className="text-xl font-black text-gray-900 dark:text-white">{formatCurrency(currentBill.items.reduce((sum, i) => sum + (i.price * i.qty), 0))}</div>
