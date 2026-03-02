@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, ChevronLeft, Plus, Share2, Download, AlertCircle, Copy, Link, Pencil, Trash2, Check, GripVertical } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Plus, Share2, Download, AlertCircle, Pencil, Trash2, Check } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { ReceiptData, Person, Payment, ANIMALS } from '../../types';
 import {
@@ -60,7 +60,7 @@ const SortableBillItem: React.FC<SortableBillItemProps> = ({ bill, setCurrentBil
           <span className="text-[10px] text-gray-500">{bill.items.length} item</span>
         </div>
         <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
-          <button 
+          <button
             onClick={() => {
               setCurrentBillId(bill.id);
               setStep('BILL_NAME');
@@ -70,7 +70,7 @@ const SortableBillItem: React.FC<SortableBillItemProps> = ({ bill, setCurrentBil
           >
             <Pencil size={14} />
           </button>
-          <button 
+          <button
             onClick={() => {
               if (window.confirm('Hapus nota ini?')) {
                 setBills(bills.filter(b => b.id !== bill.id));
@@ -111,11 +111,9 @@ type SummaryStepProps = {
   setServicePercentage: (val: string) => void;
 };
 
-export const SummaryStep: React.FC<SummaryStepProps> = ({ 
-  darkMode, setDarkMode, bills, people, payments, setBills, setPeople, setPayments, setStep, setCurrentBillId, formatCurrency, totalBill, totals, shareRef, handleShare, handleDownload, isSharing, setTaxPercentage, setServicePercentage 
+export const SummaryStep: React.FC<SummaryStepProps> = ({
+  darkMode, setDarkMode, bills, people, payments, setBills, setPeople, setPayments, setStep, setCurrentBillId, formatCurrency, totalBill, totals, shareRef, handleShare, handleDownload, isSharing, setTaxPercentage, setServicePercentage
 }) => {
-  const [copied, setCopied] = React.useState(false);
-  const [linkCopied, setLinkCopied] = React.useState(false);
   const hasUnassigned = bills.some(b => b.items.some(i => i.sharedBy.length === 0));
   const unassignedItemsCount = bills.reduce((acc, b) => acc + b.items.filter(i => i.sharedBy.length === 0).length, 0);
 
@@ -141,28 +139,28 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
   const calculateSettlements = (totals: any[]) => {
     const debtors = totals.filter(t => t.balance < -0.01).map(t => ({ ...t, balance: Math.abs(t.balance) }));
     const creditors = totals.filter(t => t.balance > 0.01).map(t => ({ ...t }));
-    
+
     const settlements: { from: string, to: string, amount: number }[] = [];
-    
+
     let d = 0;
     let c = 0;
-    
+
     while (d < debtors.length && c < creditors.length) {
       const amount = Math.min(debtors[d].balance, creditors[c].balance);
       settlements.push({ from: debtors[d].name, to: creditors[c].name, amount });
-      
+
       debtors[d].balance -= amount;
       creditors[c].balance -= amount;
-      
+
       if (debtors[d].balance < 0.01) d++;
       if (creditors[c].balance < 0.01) c++;
     }
-    
+
     return settlements;
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className="flex flex-col h-full dark:bg-gray-950"
@@ -173,45 +171,15 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
         </button>
         <div className="text-center">
           <h2 className="font-black text-gray-900 dark:text-white text-base tracking-tight">Hasil Akhir</h2>
-          <div className="flex items-center justify-center space-x-2">
-            <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-black uppercase tracking-widest">ID: {bills[0]?.id || '-'}</p>
-            {bills[0]?.id && (
-              <div className="flex items-center space-x-1">
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(bills[0].id);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                  className="p-1 text-gray-400 hover:text-indigo-500 transition-colors"
-                  title="Salin ID"
-                >
-                  {copied ? <Check size={10} className="text-emerald-500" /> : <Copy size={10} />}
-                </button>
-                <button 
-                  onClick={() => {
-                    const url = `${window.location.origin}?session=${bills[0].id}`;
-                    navigator.clipboard.writeText(url);
-                    setLinkCopied(true);
-                    setTimeout(() => setLinkCopied(false), 2000);
-                  }}
-                  className="p-1 text-gray-400 hover:text-indigo-500 transition-colors"
-                  title="Salin Link Sesi"
-                >
-                  {linkCopied ? <Check size={10} className="text-emerald-500" /> : <Link size={10} />}
-                </button>
-              </div>
-            )}
-          </div>
         </div>
         <div className="flex items-center space-x-1.5">
-          <button 
+          <button
             onClick={handleDownload}
             className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors"
           >
             <Download size={18} />
           </button>
-          <button 
+          <button
             onClick={handleShare}
             className="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200 dark:shadow-none"
           >
@@ -223,7 +191,7 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {hasUnassigned && (
-          <motion.div 
+          <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-900/30 text-red-800 dark:text-red-200 px-4 py-4 rounded-2xl shadow-md shadow-red-100 dark:shadow-none flex flex-col space-y-2"
@@ -238,7 +206,7 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
               </div>
             </div>
             <div className="pt-1">
-              <button 
+              <button
                 onClick={() => {
                   const billWithUnassigned = bills.find(b => b.items.some(i => i.sharedBy.length === 0));
                   if (billWithUnassigned) {
@@ -280,9 +248,9 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
           <h3 className="text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider px-1">Rincian Per Orang</h3>
           <div className="space-y-1">
             {totals.map((person, index) => (
-              <motion.div 
+              <motion.div
                 layout
-                key={person.id} 
+                key={person.id}
                 className="relative overflow-hidden py-2 px-1 border-b border-gray-100 dark:border-gray-900 last:border-0"
               >
                 <div className="flex justify-between items-center">
@@ -309,12 +277,12 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
         <div className="space-y-4">
           <h3 className="text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider px-1">Ringkasan Nota</h3>
           <div className="space-y-2">
-            <DndContext 
+            <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <SortableContext 
+              <SortableContext
                 items={bills.map(b => b.id)}
                 strategy={verticalListSortingStrategy}
               >
@@ -327,7 +295,7 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
                       exit={{ opacity: 0, scale: 0.95 }}
                       key={bill.id}
                     >
-                      <SortableBillItem 
+                      <SortableBillItem
                         bill={bill}
                         setCurrentBillId={setCurrentBillId}
                         setStep={setStep}
@@ -367,7 +335,6 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
               setCurrentBillId(null);
               setStep('UPLOAD');
               localStorage.removeItem('splitbill_state');
-              window.location.search = ''; // Clear URL params
             }
           }}
           className="w-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-200 font-bold py-4 px-6 rounded-xl transition-all active:scale-95 text-sm"

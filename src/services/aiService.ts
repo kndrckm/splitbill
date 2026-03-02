@@ -1,13 +1,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Item, ReceiptData } from "../types";
-
-const generateId = () => Math.random().toString(36).substring(2, 9);
+import { generateId } from "../utils";
 
 export const processReceipt = async (base64Data: string, mimeType: string, apiKey: string): Promise<ReceiptData> => {
   const ai = new GoogleGenAI({ apiKey });
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-2.5-flash-preview-05-20',
     contents: [
       {
         inlineData: {
@@ -57,10 +56,15 @@ export const processReceipt = async (base64Data: string, mimeType: string, apiKe
   });
 
   const text = response.text;
-  if (!text) throw new Error("No response from Gemini");
-  
-  const parsedData = JSON.parse(text);
-  
+  if (!text) throw new Error("Tidak ada response dari Gemini. Coba lagi.");
+
+  let parsedData;
+  try {
+    parsedData = JSON.parse(text);
+  } catch (e) {
+    throw new Error("Gagal membaca response dari AI. Coba foto ulang dengan pencahayaan lebih baik.");
+  }
+
   const itemsWithIds: Item[] = parsedData.items.map((item: any) => ({
     id: generateId(),
     name: item.name,

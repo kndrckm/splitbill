@@ -3,7 +3,7 @@ import html2canvas from 'html2canvas';
 import { AnimatePresence } from 'motion/react';
 import { useBillSplit } from './hooks/useBillSplit';
 import { processReceipt } from './services/aiService';
-import { saveBill } from './services/apiService';
+import { generateId, getApiKey } from './utils';
 import { COLORS, Step } from './types';
 
 // Steps
@@ -19,8 +19,7 @@ import { RestoreStep } from './components/steps/RestoreStep';
 
 // UI
 import { ShareableView } from './components/ui/ShareableView';
-
-const generateId = () => Math.random().toString(36).substring(2, 9);
+import { ApiKeyModal } from './components/ui/ApiKeyModal';
 
 export default function App() {
   const {
@@ -44,6 +43,8 @@ export default function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [pendingState, setPendingState] = useState<any>(null);
   const [previousStep, setPreviousStep] = useState<Step | null>(null);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [pendingImageDataUrl, setPendingImageDataUrl] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -87,8 +88,8 @@ export default function App() {
 
   const startCamera = async () => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
       });
       setStream(mediaStream);
       if (videoRef.current) {
@@ -139,15 +140,22 @@ export default function App() {
   };
 
   const handleProcessReceipt = async (dataUrl: string) => {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      // Save the pending image and show API key modal
+      setPendingImageDataUrl(dataUrl);
+      setShowApiKeyModal(true);
+      return;
+    }
+
     handleSetStep('PROCESSING');
     setError(null);
     try {
       const base64Data = dataUrl.split(',')[1];
       const mimeType = dataUrl.split(';')[0].split(':')[1];
-      const apiKey = process.env.GEMINI_API_KEY!;
-      
+
       const parsedData = await processReceipt(base64Data, mimeType, apiKey);
-      
+
       let initialTaxPct = 0;
       let initialServicePct = 0;
       if (parsedData.subtotal > 0) {
@@ -159,14 +167,24 @@ export default function App() {
       setServicePercentage(initialServicePct.toFixed(2));
       setBills(prev => [...prev, parsedData]);
       setCurrentBillId(parsedData.id);
-      
+
       if (people.length === 0) {
         setPeople([{ id: generateId(), name: 'Saya', color: COLORS[0] }]);
       }
       handleSetStep('BILL_NAME');
     } catch (err: any) {
-      setError(err.message || 'Gagal memproses nota.');
+      setError(err.message || 'Gagal memproses nota. Periksa API key Anda.');
       handleSetStep('UPLOAD');
+    }
+  };
+
+  const handleApiKeySaved = (key: string) => {
+    setShowApiKeyModal(false);
+    // If there was a pending image, process it now
+    if (pendingImageDataUrl) {
+      const dataUrl = pendingImageDataUrl;
+      setPendingImageDataUrl(null);
+      handleProcessReceipt(dataUrl);
     }
   };
 
@@ -188,36 +206,6 @@ export default function App() {
     }
     handleSetStep('BILL_NAME');
   };
-
-  const handleJoinSession = async (code: string) => {
-    if (!code.trim()) return;
-    setError(null);
-    try {
-      const response = await fetch(`/api/bills/${code}`);
-      if (!response.ok) throw new Error('Sesi tidak ditemukan.');
-      const billData = await response.json();
-      const { bill, people: savedPeople, payments: savedPayments } = billData.data;
-      
-      setBills(prev => {
-        if (prev.find(b => b.id === bill.id)) return prev;
-        return [...prev, bill];
-      });
-      setPeople(savedPeople || []);
-      setPayments(savedPayments || []);
-      setCurrentBillId(bill.id);
-      handleSetStep('SUMMARY');
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sessionCode = params.get('session');
-    if (sessionCode) {
-      handleJoinSession(sessionCode);
-    }
-  }, []);
 
   const addPerson = (e: React.FormEvent) => {
     e.preventDefault();
@@ -298,6 +286,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('Failed to share:', err);
+      setError('Gagal membagikan gambar.');
     } finally {
       setIsSharing(false);
     }
@@ -314,54 +303,48 @@ export default function App() {
       a.click();
     } catch (err) {
       console.error('Failed to download:', err);
+      setError('Gagal mengunduh gambar.');
     }
   };
 
   const totals = calculatePersonTotals();
   const totalBill = bills.reduce((sum, b) => sum + b.total, 0);
 
-  // Auto-save to backend when summary is reached
-  useEffect(() => {
-    if (step === 'SUMMARY' && currentBill) {
-      saveBill(currentBill, people, payments).catch(console.error);
-    }
-  }, [step, currentBill, people, payments]);
-
   return (
     <div className="min-h-screen bg-gray-900 dark:bg-black flex justify-center font-sans overflow-hidden">
       <div className="w-full max-w-md bg-white dark:bg-gray-950 h-screen shadow-2xl overflow-hidden relative flex flex-col">
         <AnimatePresence mode="wait">
           {step === 'RESTORE' && (
-            <RestoreStep 
-              pendingState={pendingState} 
-              setBills={setBills} 
-              setPeople={setPeople} 
-              setPayments={setPayments} 
-              setStep={handleSetStep} 
-              setCurrentBillId={setCurrentBillId} 
-              setIsInitialized={setIsInitialized} 
+            <RestoreStep
+              pendingState={pendingState}
+              setBills={setBills}
+              setPeople={setPeople}
+              setPayments={setPayments}
+              setStep={handleSetStep}
+              setCurrentBillId={setCurrentBillId}
+              setIsInitialized={setIsInitialized}
             />
           )}
           {step === 'UPLOAD' && (
-            <UploadStep 
-              darkMode={darkMode} 
-              setDarkMode={setDarkMode} 
-              error={error} 
-              startCamera={startCamera} 
-              handleFileUpload={handleFileUpload} 
+            <UploadStep
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              error={error}
+              startCamera={startCamera}
+              handleFileUpload={handleFileUpload}
               handleManualInput={handleManualInput}
-              handleJoinSession={handleJoinSession}
-              fileInputRef={fileInputRef} 
+              fileInputRef={fileInputRef}
+              onOpenApiKeyModal={() => setShowApiKeyModal(true)}
             />
           )}
           {step === 'BILL_NAME' && (
-            <BillNameStep 
-              darkMode={darkMode} 
-              setDarkMode={setDarkMode} 
-              currentBill={currentBill} 
-              setBills={setBills} 
-              bills={bills} 
-              setStep={handleSetStep} 
+            <BillNameStep
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              currentBill={currentBill}
+              setBills={setBills}
+              bills={bills}
+              setStep={handleSetStep}
               people={people}
               setPeople={setPeople}
               newPersonName={newPersonName}
@@ -372,92 +355,97 @@ export default function App() {
             />
           )}
           {step === 'CAMERA' && (
-            <CameraStep 
-              videoRef={videoRef} 
-              stopCamera={stopCamera} 
-              takePhoto={takePhoto} 
+            <CameraStep
+              videoRef={videoRef}
+              stopCamera={stopCamera}
+              takePhoto={takePhoto}
             />
           )}
           {step === 'PROCESSING' && (
             <ProcessingStep receiptImage={receiptImage} />
           )}
           {step === 'ASSIGN_ITEMS' && (
-            <AssignItemsStep 
-              darkMode={darkMode} 
-              setDarkMode={setDarkMode} 
-              currentBill={currentBill} 
-              people={people} 
-              setBills={setBills} 
-              bills={bills} 
-              setStep={handleSetStep} 
-              formatCurrency={formatCurrency} 
-              toggleItemShare={toggleItemShare} 
-              selectAllPeopleForItem={selectAllPeopleForItem} 
-              generateId={generateId} 
+            <AssignItemsStep
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              currentBill={currentBill}
+              people={people}
+              setBills={setBills}
+              bills={bills}
+              setStep={handleSetStep}
+              formatCurrency={formatCurrency}
+              toggleItemShare={toggleItemShare}
+              selectAllPeopleForItem={selectAllPeopleForItem}
+              generateId={generateId}
             />
           )}
           {step === 'TAX_SERVICE' && (
-            <TaxServiceStep 
-              darkMode={darkMode} 
-              setDarkMode={setDarkMode} 
-              currentBill={currentBill} 
-              setBills={setBills} 
-              bills={bills} 
-              setStep={handleSetStep} 
-              formatCurrency={formatCurrency} 
-              taxPercentage={taxPercentage} 
-              setTaxPercentage={setTaxPercentage} 
-              servicePercentage={servicePercentage} 
-              setServicePercentage={setServicePercentage} 
+            <TaxServiceStep
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              currentBill={currentBill}
+              setBills={setBills}
+              bills={bills}
+              setStep={handleSetStep}
+              formatCurrency={formatCurrency}
+              taxPercentage={taxPercentage}
+              setTaxPercentage={setTaxPercentage}
+              servicePercentage={servicePercentage}
+              setServicePercentage={setServicePercentage}
             />
           )}
           {step === 'PAYMENTS' && (
-            <PaymentsStep 
-              darkMode={darkMode} 
-              setDarkMode={setDarkMode} 
-              people={people} 
-              payments={payments} 
-              setPayments={setPayments} 
-              setStep={handleSetStep} 
-              formatCurrency={formatCurrency} 
-              totalBill={totalBill} 
-              generateId={generateId} 
+            <PaymentsStep
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              people={people}
+              payments={payments}
+              setPayments={setPayments}
+              setStep={handleSetStep}
+              formatCurrency={formatCurrency}
+              totalBill={totalBill}
+              generateId={generateId}
             />
           )}
           {step === 'SUMMARY' && (
-            <SummaryStep 
-              darkMode={darkMode} 
-              setDarkMode={setDarkMode} 
-              bills={bills} 
-              people={people} 
-              payments={payments} 
-              setBills={setBills} 
-              setPeople={setPeople} 
-              setPayments={setPayments} 
-              setStep={handleSetStep} 
-              setCurrentBillId={setCurrentBillId} 
-              formatCurrency={formatCurrency} 
-              totalBill={totalBill} 
-              totals={totals} 
-              shareRef={shareRef} 
-              handleShare={handleShare} 
-              handleDownload={handleDownload} 
-              isSharing={isSharing} 
+            <SummaryStep
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              bills={bills}
+              people={people}
+              payments={payments}
+              setBills={setBills}
+              setPeople={setPeople}
+              setPayments={setPayments}
+              setStep={handleSetStep}
+              setCurrentBillId={setCurrentBillId}
+              formatCurrency={formatCurrency}
+              totalBill={totalBill}
+              totals={totals}
+              shareRef={shareRef}
+              handleShare={handleShare}
+              handleDownload={handleDownload}
+              isSharing={isSharing}
               setTaxPercentage={setTaxPercentage}
               setServicePercentage={setServicePercentage}
             />
           )}
         </AnimatePresence>
         <canvas ref={canvasRef} className="hidden" />
-        <ShareableView 
-          shareRef={shareRef} 
-          bills={bills} 
-          people={people} 
-          totals={totals} 
-          formatCurrency={formatCurrency} 
-          totalBill={totalBill} 
+        <ShareableView
+          shareRef={shareRef}
+          bills={bills}
+          people={people}
+          totals={totals}
+          formatCurrency={formatCurrency}
+          totalBill={totalBill}
         />
       </div>
+      <ApiKeyModal
+        isOpen={showApiKeyModal}
+        onClose={() => setShowApiKeyModal(false)}
+        onKeySaved={handleApiKeySaved}
+      />
     </div>
   );
 }

@@ -13,15 +13,14 @@ export const useBillSplit = () => {
   const [distributionMode, setDistributionMode] = useState<DistributionMode>('PROPORTIONAL');
   const [darkMode, setDarkMode] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isRemoteUpdate, setIsRemoteUpdate] = useState(false);
 
   const currentBill = bills.find(b => b.id === currentBillId);
 
-  // Persistence
+  // Persistence — load from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('splitbill_state');
     const savedTheme = localStorage.getItem('splitbill_theme');
-    
+
     if (savedTheme === 'dark') setDarkMode(true);
     else if (savedTheme === 'light') setDarkMode(false);
     else if (window.matchMedia('(prefers-color-scheme: dark)').matches) setDarkMode(true);
@@ -41,56 +40,14 @@ export const useBillSplit = () => {
     setIsInitialized(true);
   }, []);
 
-  // WebSocket Sync
-  useEffect(() => {
-    if (!currentBillId || !isInitialized) return;
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.host}`);
-
-    socket.onopen = () => {
-      socket.send(JSON.stringify({ type: 'join', roomId: currentBillId }));
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload.type === 'update') {
-          setIsRemoteUpdate(true);
-          const { bills: remoteBills, people: remotePeople, payments: remotePayments } = payload.data;
-          if (remoteBills) setBills(remoteBills);
-          if (remotePeople) setPeople(remotePeople);
-          if (remotePayments) setPayments(remotePayments);
-          setTimeout(() => setIsRemoteUpdate(false), 50);
-        }
-      } catch (e) {
-        console.error('WS Message Error:', e);
-      }
-    };
-
-    const broadcast = () => {
-      if (socket.readyState === WebSocket.OPEN && !isRemoteUpdate) {
-        socket.send(JSON.stringify({
-          type: 'update',
-          data: { bills, people, payments }
-        }));
-      }
-    };
-
-    // Debounce broadcast
-    const timeout = setTimeout(broadcast, 500);
-    return () => {
-      clearTimeout(timeout);
-      socket.close();
-    };
-  }, [bills, people, payments, currentBillId, isInitialized]);
-
+  // Persistence — save to localStorage
   useEffect(() => {
     if (isInitialized) {
       localStorage.setItem('splitbill_state', JSON.stringify({ bills, people, payments, step, currentBillId }));
     }
   }, [bills, people, payments, step, currentBillId, isInitialized]);
 
+  // Theme persistence
   useEffect(() => {
     localStorage.setItem('splitbill_theme', darkMode ? 'dark' : 'light');
     if (darkMode) document.documentElement.classList.add('dark');
