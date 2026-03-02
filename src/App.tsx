@@ -366,7 +366,7 @@ export default function App() {
               <div className="flex items-center space-x-2">
                 {isLockedByOther ? <AlertCircle size={16} /> : <Check size={16} />}
                 <span>
-                  {isLockedByOther ? 'Orang lain sedang mengedit...' : 'Anda sedang mengedit.'}
+                  {isLockedByOther ? 'Orang lain sedang mengedit...' : 'Anda sedang mengedit.'} <span className="opacity-70 font-normal ml-1">({sessionId})</span>
                 </span>
               </div>
               {isLockedByOther ? (

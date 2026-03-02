@@ -234,28 +234,22 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
             )}
           </div>
           {sessionId && (
-            <div className="flex items-center justify-center space-x-2">
-              <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-black uppercase tracking-widest">ID: {sessionId}</p>
-              <div className="flex items-center space-x-1">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(sessionId);
-                    setIsCopiedId(true);
-                    setTimeout(() => setIsCopiedId(false), 2000);
-                  }}
-                  className="p-1 text-gray-400 hover:text-indigo-500 transition-colors"
-                  title="Salin ID"
-                >
-                  {isCopiedId ? <Check size={10} className="text-emerald-500" /> : <Copy size={10} />}
-                </button>
-                <button
-                  onClick={handleCopyLink}
-                  className="p-1 text-gray-400 hover:text-indigo-500 transition-colors"
-                  title="Salin Link Sesi"
-                >
-                  {isCopied ? <Check size={10} className="text-emerald-500" /> : <LinkIcon size={10} />}
-                </button>
-              </div>
+            <div className="flex items-center justify-center mt-1">
+              <button
+                onClick={() => {
+                  const joinUrl = `https://kndrckm.github.io/splitbill/?session=${sessionId}`;
+                  navigator.clipboard.writeText(joinUrl);
+                  setIsCopiedId(true);
+                  setTimeout(() => setIsCopiedId(false), 2000);
+                }}
+                className={`flex items-center space-x-1.5 px-2 py-1 rounded-md transition-all ${isCopiedId ? 'bg-emerald-50 dark:bg-emerald-900/30' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}
+                title="Salin Link Sesi"
+              >
+                <span className={`text-[10px] font-black uppercase tracking-widest ${isCopiedId ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-indigo-400'}`}>
+                  ID: {sessionId}
+                </span>
+                {isCopiedId ? <Check size={10} className="text-emerald-500" /> : <Copy size={10} className="text-indigo-400" />}
+              </button>
             </div>
           )}
         </div>
