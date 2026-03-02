@@ -16,10 +16,11 @@ type TaxServiceStepProps = {
   setTaxPercentage: (val: string) => void;
   servicePercentage: string;
   setServicePercentage: (val: string) => void;
+  isInputDisabled?: boolean;
 };
 
-export const TaxServiceStep: React.FC<TaxServiceStepProps> = ({ 
-  darkMode, setDarkMode, currentBill, setBills, bills, setStep, formatCurrency, taxPercentage, setTaxPercentage, servicePercentage, setServicePercentage 
+export const TaxServiceStep: React.FC<TaxServiceStepProps> = ({
+  darkMode, setDarkMode, currentBill, setBills, bills, setStep, formatCurrency, taxPercentage, setTaxPercentage, servicePercentage, setServicePercentage, isInputDisabled
 }) => {
   if (!currentBill) return null;
 
@@ -34,7 +35,7 @@ export const TaxServiceStep: React.FC<TaxServiceStepProps> = ({
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
@@ -58,26 +59,28 @@ export const TaxServiceStep: React.FC<TaxServiceStepProps> = ({
             <div className="flex justify-between items-center">
               <span className="text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">Pajak (%)</span>
               <div className="flex items-center space-x-2">
-                <input 
+                <input
                   type="number"
                   value={taxPercentage === '0' ? '' : taxPercentage}
+                  disabled={isInputDisabled}
                   placeholder="0"
                   onFocus={(e) => e.target.select()}
                   onChange={(e) => setTaxPercentage(e.target.value || '0')}
-                  className="w-16 bg-gray-50 dark:bg-gray-800 py-1.5 px-3 rounded-lg text-right font-black text-indigo-600 dark:text-indigo-400 focus:outline-none text-sm placeholder-gray-300 dark:placeholder-gray-600"
+                  className="w-16 bg-gray-50 dark:bg-gray-800 py-1.5 px-3 rounded-lg text-right font-black text-indigo-600 dark:text-indigo-400 focus:outline-none text-sm placeholder-gray-300 dark:placeholder-gray-600 disabled:opacity-50"
                 />
               </div>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">Layanan (%)</span>
               <div className="flex items-center space-x-2">
-                <input 
+                <input
                   type="number"
                   value={servicePercentage === '0' ? '' : servicePercentage}
+                  disabled={isInputDisabled}
                   placeholder="0"
                   onFocus={(e) => e.target.select()}
                   onChange={(e) => setServicePercentage(e.target.value || '0')}
-                  className="w-16 bg-gray-50 dark:bg-gray-800 py-1.5 px-3 rounded-lg text-right font-black text-indigo-600 dark:text-indigo-400 focus:outline-none text-sm placeholder-gray-300 dark:placeholder-gray-600"
+                  className="w-16 bg-gray-50 dark:bg-gray-800 py-1.5 px-3 rounded-lg text-right font-black text-indigo-600 dark:text-indigo-400 focus:outline-none text-sm placeholder-gray-300 dark:placeholder-gray-600 disabled:opacity-50"
                 />
               </div>
             </div>

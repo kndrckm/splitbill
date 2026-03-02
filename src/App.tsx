@@ -6,6 +6,7 @@ import { processReceipt } from './services/aiService';
 import { generateId, getApiKey } from './utils';
 import { decodeShareData } from './utils/shareUtils';
 import { COLORS, Step } from './types';
+import { AlertCircle, Check, Share2 } from 'lucide-react';
 
 // Steps
 import { UploadStep } from './components/steps/UploadStep';
@@ -35,8 +36,12 @@ export default function App() {
     darkMode, setDarkMode,
     currentBill,
     formatCurrency,
-    calculatePersonTotals
+    calculatePersonTotals,
+    sharedSession
   } = useBillSplit();
+
+  const { isLockedByOther, isLockedByMe, isConnected, sessionId, lockedBy } = sharedSession;
+  const isInputDisabled = isLockedByOther;
 
   const [newPersonName, setNewPersonName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -335,6 +340,51 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-900 dark:bg-black flex justify-center font-sans overflow-hidden">
       <div className="w-full max-w-md bg-white dark:bg-gray-950 h-screen shadow-2xl overflow-hidden relative flex flex-col">
+        { /* Shared Session Banner Display logic */}
+        {step !== 'RESTORE' && (
+          <div className="w-full z-50">
+            {sessionId ? (
+              <div className={`px-4 py-3 text-sm font-bold flex items-center justify-between ${isLockedByOther ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
+                <div className="flex items-center space-x-2">
+                  {isLockedByOther ? <AlertCircle size={16} /> : <Check size={16} />}
+                  <span>
+                    {isLockedByOther ? 'Orang lain sedang mengedit...' : 'Anda sedang mengedit.'}
+                  </span>
+                </div>
+                {isLockedByOther ? (
+                  <button onClick={sharedSession.takeLock} className="px-3 py-1 bg-amber-600 text-white rounded-lg text-xs shadow-sm ml-2 whitespace-nowrap active:scale-95 transition-transform">
+                    AMBIL ALIH
+                  </button>
+                ) : (
+                  <div className="flex space-x-2">
+                    <button onClick={() => {
+                      const url = window.location.href;
+                      navigator.clipboard.writeText(url);
+                      alert('Link sesi disalin: ' + url);
+                    }} className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs shadow-sm ml-2 whitespace-nowrap active:scale-95 transition-transform flex items-center gap-1">
+                      <Share2 size={12} /> Link
+                    </button>
+                    <button onClick={sharedSession.releaseLock} className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs shadow-sm whitespace-nowrap active:scale-95 transition-transform">
+                      LEPASKAN
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-between border-b border-indigo-100 dark:border-indigo-800">
+                <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">Berkolaborasi dengan teman?</span>
+                <button
+                  onClick={sharedSession.createSession}
+                  className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-transform flex items-center space-x-1"
+                >
+                  <Share2 size={12} />
+                  <span>Buat Sesi</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           {step === 'RESTORE' && (
             <RestoreStep
@@ -357,6 +407,7 @@ export default function App() {
               handleManualInput={handleManualInput}
               fileInputRef={fileInputRef}
               onOpenApiKeyModal={() => setShowApiKeyModal(true)}
+              isInputDisabled={isInputDisabled}
             />
           )}
           {step === 'BILL_NAME' && (
@@ -374,6 +425,7 @@ export default function App() {
               addPerson={addPerson}
               removePerson={removePerson}
               onBack={handleBillNameBack}
+              isInputDisabled={isInputDisabled}
             />
           )}
           {step === 'CAMERA' && (
@@ -399,6 +451,7 @@ export default function App() {
               toggleItemShare={toggleItemShare}
               selectAllPeopleForItem={selectAllPeopleForItem}
               generateId={generateId}
+              isInputDisabled={isInputDisabled}
             />
           )}
           {step === 'TAX_SERVICE' && (
@@ -414,6 +467,7 @@ export default function App() {
               setTaxPercentage={setTaxPercentage}
               servicePercentage={servicePercentage}
               setServicePercentage={setServicePercentage}
+              isInputDisabled={isInputDisabled}
             />
           )}
           {step === 'PAYMENTS' && (
@@ -427,6 +481,7 @@ export default function App() {
               formatCurrency={formatCurrency}
               totalBill={totalBill}
               generateId={generateId}
+              isInputDisabled={isInputDisabled}
             />
           )}
           {step === 'SUMMARY' && (

@@ -14,16 +14,17 @@ type PaymentsStepProps = {
   formatCurrency: (amount: number) => string;
   totalBill: number;
   generateId: () => string;
+  isInputDisabled?: boolean;
 };
 
-export const PaymentsStep: React.FC<PaymentsStepProps> = ({ 
-  darkMode, setDarkMode, people, payments, setPayments, setStep, formatCurrency, totalBill, generateId 
+export const PaymentsStep: React.FC<PaymentsStepProps> = ({
+  darkMode, setDarkMode, people, payments, setPayments, setStep, formatCurrency, totalBill, generateId, isInputDisabled
 }) => {
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = Math.max(0, totalBill - totalPaid);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
@@ -65,11 +66,12 @@ export const PaymentsStep: React.FC<PaymentsStepProps> = ({
               {people.map(person => (
                 <button
                   key={person.id}
+                  disabled={isInputDisabled}
                   onClick={() => {
                     const amount = remaining > 0 ? remaining : 0;
                     setPayments([...payments, { id: generateId(), personId: person.id, amount, note: 'Bayar' }]);
                   }}
-                  className={`flex items-center space-x-2 p-2 rounded-xl border-2 transition-all active:scale-95 ${person.color.replace('bg-', 'border-').replace('500', '100')} dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800`}
+                  className={`flex items-center space-x-2 p-2 rounded-xl border-2 transition-all active:scale-95 ${person.color.replace('bg-', 'border-').replace('500', '100')} dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed`}
                 >
                   <div className={`w-6 h-6 rounded-full ${person.color} flex items-center justify-center text-white font-bold text-[10px]`}>
                     {person.name.charAt(0).toUpperCase()}
@@ -99,13 +101,14 @@ export const PaymentsStep: React.FC<PaymentsStepProps> = ({
                       </div>
                       <div>
                         <div className="font-bold text-gray-900 dark:text-white text-xs">{person?.name}</div>
-                        <input 
+                        <input
                           type="text"
                           value={payment.note}
+                          disabled={isInputDisabled}
                           onChange={(e) => {
                             setPayments(payments.map(p => p.id === payment.id ? { ...p, note: e.target.value } : p));
                           }}
-                          className="text-[10px] text-gray-400 dark:text-gray-500 bg-transparent focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400"
+                          className="text-[10px] text-gray-400 dark:text-gray-500 bg-transparent focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400 disabled:opacity-50"
                         />
                       </div>
                     </div>
@@ -113,24 +116,27 @@ export const PaymentsStep: React.FC<PaymentsStepProps> = ({
                       <div className="text-right">
                         <div className="flex items-center text-xs font-black text-gray-900 dark:text-white">
                           <span className="text-[8px] mr-1">Rp.</span>
-                          <input 
+                          <input
                             type="number"
                             value={payment.amount === 0 ? '' : payment.amount}
+                            disabled={isInputDisabled}
                             placeholder="0"
                             onFocus={(e) => { if (payment.amount === 0) e.target.select(); }}
                             onChange={(e) => {
                               setPayments(payments.map(p => p.id === payment.id ? { ...p, amount: parseFloat(e.target.value) || 0 } : p));
                             }}
-                            className="bg-transparent w-16 text-right focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400"
+                            className="bg-transparent w-16 text-right focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400 disabled:opacity-50"
                           />
                         </div>
                       </div>
-                      <button 
-                        onClick={() => setPayments(payments.filter(p => p.id !== payment.id))}
-                        className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors p-1"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {!isInputDisabled && (
+                        <button
+                          onClick={() => setPayments(payments.filter(p => p.id !== payment.id))}
+                          className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors p-1"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

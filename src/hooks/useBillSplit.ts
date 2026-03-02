@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Step, ReceiptData, Person, Payment, DistributionMode } from '../types';
+import { useSharedSession } from './useSharedSession';
 
 export const useBillSplit = () => {
   const [step, setStep] = useState<Step>('UPLOAD');
@@ -15,6 +16,22 @@ export const useBillSplit = () => {
   const [isInitialized, setIsInitialized] = useState(false);
 
   const currentBill = bills.find(b => b.id === currentBillId);
+
+  // --- Shared Session Integration ---
+  const sharedSession = useSharedSession({ bills, people, payments, currentBillId, step });
+
+  // Sync state FROM Firebase when another user is editing
+  useEffect(() => {
+    sharedSession.setOnStateUpdate((newState) => {
+      if (newState.bills) setBills(newState.bills);
+      if (newState.people) setPeople(newState.people);
+      if (newState.payments) setPayments(newState.payments);
+      if (newState.currentBillId) setCurrentBillId(newState.currentBillId);
+      if (newState.step && newState.step !== 'RESTORE' && step !== 'RESTORE') {
+        setStep(newState.step as Step);
+      }
+    });
+  }, [sharedSession, step]);
 
   // Persistence — load from localStorage
   useEffect(() => {
@@ -129,6 +146,7 @@ export const useBillSplit = () => {
     darkMode, setDarkMode,
     currentBill,
     formatCurrency,
-    calculatePersonTotals
+    calculatePersonTotals,
+    sharedSession
   };
 };

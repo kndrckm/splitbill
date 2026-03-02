@@ -16,10 +16,11 @@ type AssignItemsStepProps = {
   toggleItemShare: (itemId: string, personId: string) => void;
   selectAllPeopleForItem: (itemId: string) => void;
   generateId: () => string;
+  isInputDisabled: boolean;
 };
 
-export const AssignItemsStep: React.FC<AssignItemsStepProps> = ({ 
-  darkMode, setDarkMode, currentBill, people, setBills, bills, setStep, formatCurrency, toggleItemShare, selectAllPeopleForItem, generateId 
+export const AssignItemsStep: React.FC<AssignItemsStepProps> = ({
+  darkMode, setDarkMode, currentBill, people, setBills, bills, setStep, formatCurrency, toggleItemShare, selectAllPeopleForItem, generateId, isInputDisabled
 }) => {
   if (!currentBill) return null;
 
@@ -54,7 +55,7 @@ export const AssignItemsStep: React.FC<AssignItemsStepProps> = ({
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
@@ -74,67 +75,74 @@ export const AssignItemsStep: React.FC<AssignItemsStepProps> = ({
       <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
         <AnimatePresence mode="popLayout">
           {currentBill.items.map((item) => (
-            <motion.div 
+            <motion.div
               layout
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              key={item.id} 
+              key={item.id}
               className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 space-y-3"
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center space-x-2">
-                    <input 
+                    <input
                       type="text"
                       value={item.name}
+                      disabled={isInputDisabled}
                       onChange={(e) => updateItem(item.id, { name: e.target.value })}
                       onFocus={(e) => { if (item.name === 'Item Baru') e.target.select(); }}
-                      className="font-bold text-gray-900 dark:text-white text-base bg-transparent focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400 w-full"
+                      className="font-bold text-gray-900 dark:text-white text-base bg-transparent focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400 w-full disabled:opacity-50"
                     />
                   </div>
                   <div className="flex items-center space-x-2 text-xs text-gray-400 dark:text-gray-500">
                     <div className="flex items-center bg-gray-50 dark:bg-gray-800 px-2 py-0.5 rounded-lg">
                       <span className="text-[8px] mr-1">Rp.</span>
-                      <input 
+                      <input
                         type="number"
                         value={item.price === 0 ? '' : item.price}
+                        disabled={isInputDisabled}
                         placeholder="0"
                         onFocus={(e) => { if (item.price === 0) e.target.select(); }}
                         onChange={(e) => updateItem(item.id, { price: parseFloat(e.target.value) || 0 })}
-                        className="bg-transparent w-16 font-bold focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400"
+                        className="bg-transparent w-16 font-bold focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400 disabled:opacity-50"
                       />
                     </div>
                     <span>x</span>
-                    <input 
+                    <input
                       type="number"
                       value={item.qty}
+                      disabled={isInputDisabled}
                       onChange={(e) => updateItem(item.id, { qty: parseInt(e.target.value) || 1 })}
-                      className="bg-gray-50 dark:bg-gray-800 w-8 px-1 py-0.5 rounded-lg font-bold text-center focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400"
+                      className="bg-gray-50 dark:bg-gray-800 w-8 px-1 py-0.5 rounded-lg font-bold text-center focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400 disabled:opacity-50"
                     />
                   </div>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <button 
-                    onClick={() => duplicateItem(item)}
-                    className="p-1 text-gray-300 dark:text-gray-600 hover:text-indigo-500 transition-colors"
-                    title="Duplikat Item"
-                  >
-                    <Copy size={16} />
-                  </button>
-                  <button 
-                    onClick={() => removeItem(item.id)}
-                    className="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  {!isInputDisabled && (
+                    <>
+                      <button
+                        onClick={() => duplicateItem(item)}
+                        className="p-1 text-gray-300 dark:text-gray-600 hover:text-indigo-500 transition-colors"
+                        title="Duplikat Item"
+                      >
+                        <Copy size={16} />
+                      </button>
+                      <button
+                        onClick={() => removeItem(item.id)}
+                        className="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Dibagi Ke:</span>
-                  <button 
+                  <button
                     onClick={() => selectAllPeopleForItem(item.id)}
                     className="text-[8px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center space-x-1"
                   >
@@ -153,12 +161,12 @@ export const AssignItemsStep: React.FC<AssignItemsStepProps> = ({
                     return (
                       <button
                         key={person.id}
+                        disabled={isInputDisabled}
                         onClick={() => toggleItemShare(item.id, person.id)}
-                        className={`flex items-center space-x-1.5 px-2 py-1.5 rounded-lg border-2 transition-all active:scale-95 ${
-                          isShared 
-                            ? `${person.color} border-transparent text-white shadow-sm` 
+                        className={`flex items-center space-x-1.5 px-2 py-1.5 rounded-lg border-2 transition-all active:scale-95 disabled:opacity-50 ${isShared
+                            ? `${person.color} border-transparent text-white shadow-sm`
                             : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:border-indigo-100 dark:hover:border-indigo-900'
-                        }`}
+                          }`}
                       >
                         <div className={`w-4 h-4 rounded-full ${isShared ? 'bg-white/20' : person.color} flex items-center justify-center text-[8px] font-bold`}>
                           {isShared ? <Check size={10} /> : person.name.charAt(0).toUpperCase()}
@@ -173,13 +181,15 @@ export const AssignItemsStep: React.FC<AssignItemsStepProps> = ({
           ))}
         </AnimatePresence>
 
-        <button 
-          onClick={addItem}
-          className="w-full py-4 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-gray-400 dark:text-gray-600 hover:text-indigo-500 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-900 transition-all flex items-center justify-center space-x-2 font-bold text-sm"
-        >
-          <Plus size={16} />
-          <span>Tambah Item Manual</span>
-        </button>
+        {!isInputDisabled && (
+          <button
+            onClick={addItem}
+            className="w-full py-4 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-gray-400 dark:text-gray-600 hover:text-indigo-500 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-900 transition-all flex items-center justify-center space-x-2 font-bold text-sm"
+          >
+            <Plus size={16} />
+            <span>Tambah Item Manual</span>
+          </button>
+        )}
       </div>
 
       <div className="p-4 bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-900 shadow-xl">

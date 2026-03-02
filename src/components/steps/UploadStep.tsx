@@ -13,10 +13,11 @@ type UploadStepProps = {
   handleManualInput: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onOpenApiKeyModal: () => void;
+  isInputDisabled?: boolean;
 };
 
 export const UploadStep: React.FC<UploadStepProps> = ({
-  darkMode, setDarkMode, error, startCamera, handleFileUpload, handleManualInput, fileInputRef, onOpenApiKeyModal
+  darkMode, setDarkMode, error, startCamera, handleFileUpload, handleManualInput, fileInputRef, onOpenApiKeyModal, isInputDisabled
 }) => {
   const apiKeyAvailable = hasApiKey();
 
@@ -58,7 +59,8 @@ export const UploadStep: React.FC<UploadStepProps> = ({
       <div className="w-full space-y-3 mt-4">
         <button
           onClick={startCamera}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-2xl flex items-center justify-center space-x-3 transition-all active:scale-95 shadow-lg shadow-indigo-200 dark:shadow-none"
+          disabled={isInputDisabled}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-2xl flex items-center justify-center space-x-3 transition-all active:scale-95 shadow-lg shadow-indigo-200 dark:shadow-none"
         >
           <Camera size={20} />
           <span className="text-base">Ambil Foto Nota</span>
@@ -67,14 +69,16 @@ export const UploadStep: React.FC<UploadStepProps> = ({
         <div className="flex space-x-2">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex-1 bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-900 text-gray-700 dark:text-gray-300 font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95 text-sm"
+            disabled={isInputDisabled}
+            className="flex-1 bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-900 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95 text-sm"
           >
             <Upload size={16} />
             <span>Upload Foto</span>
           </button>
           <button
             onClick={handleManualInput}
-            className="flex-1 bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-900 text-gray-700 dark:text-gray-300 font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95 text-sm"
+            disabled={isInputDisabled}
+            className="flex-1 bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-900 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95 text-sm"
           >
             <Plus size={16} />
             <span>Input Manual</span>
