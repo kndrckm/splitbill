@@ -26,13 +26,13 @@ export const ShareableView: React.FC<ShareableViewProps> = ({ shareRef, bills, p
 
   return (
     <div className="fixed -left-[9999px] top-0">
-      <div 
+      <div
         ref={shareRef}
         className="w-[400px] p-8 font-sans"
         style={{ backgroundColor: '#ffffff', color: '#111827' }}
       >
         <div className="text-center mb-8 pb-8" style={{ borderBottom: '2px dashed #e5e7eb' }}>
-          <div 
+          <div
             className="w-16 h-16 text-white rounded-2xl flex items-center justify-center mx-auto mb-4"
             style={{ backgroundColor: '#4f46e5', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
           >
@@ -47,17 +47,25 @@ export const ShareableView: React.FC<ShareableViewProps> = ({ shareRef, bills, p
             <div key={person.id} className="rounded-3xl p-6" style={{ backgroundColor: '#f9fafb', border: '1px solid #f3f4f6' }}>
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center space-x-3">
-                  <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg"
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg relative overflow-hidden"
                     style={{ backgroundColor: COLOR_MAP[person.color] || '#6366f1' }}
                   >
-                    {getAnimalIcon(index)}
+                    <span
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{
+                        lineHeight: 1,
+                        fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"'
+                      }}
+                    >
+                      {getAnimalIcon(index)}
+                    </span>
                   </div>
                   <h3 className="font-black text-lg" style={{ color: '#111827' }}>{person.name}</h3>
                 </div>
                 <div className="text-right">
                   <div className="text-xl font-black" style={{ color: '#4f46e5' }}>{formatCurrency(person.finalTotal)}</div>
-                  <div 
+                  <div
                     className="text-[8px] font-bold uppercase tracking-widest mt-1"
                     style={{ color: person.balance > 0.01 ? '#10b981' : person.balance < -0.01 ? '#ef4444' : '#9ca3af' }}
                   >
@@ -65,7 +73,7 @@ export const ShareableView: React.FC<ShareableViewProps> = ({ shareRef, bills, p
                   </div>
                 </div>
               </div>
-              
+
               <div className="space-y-2 pt-4" style={{ borderTop: '1px solid #e5e7eb' }}>
                 {bills.map(bill => {
                   const personItems = bill.items.filter(item => item.sharedBy.includes(person.id));

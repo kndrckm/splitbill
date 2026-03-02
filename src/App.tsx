@@ -4,6 +4,7 @@ import { AnimatePresence } from 'motion/react';
 import { useBillSplit } from './hooks/useBillSplit';
 import { processReceipt } from './services/aiService';
 import { generateId, getApiKey } from './utils';
+import { decodeShareData } from './utils/shareUtils';
 import { COLORS, Step } from './types';
 
 // Steps
@@ -68,6 +69,27 @@ export default function App() {
   };
 
   useEffect(() => {
+    // 1. Try to load from URL share link
+    const queryParams = new URLSearchParams(window.location.search);
+    const shareData = queryParams.get('share');
+
+    if (shareData) {
+      const decoded = decodeShareData(shareData);
+      if (decoded && decoded.bills && decoded.people) {
+        setBills(decoded.bills);
+        setPeople(decoded.people);
+        if (decoded.payments) setPayments(decoded.payments);
+
+        // Clean up URL to hide the long base64 string
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        setStep('SUMMARY');
+        setIsInitialized(true);
+        return;
+      }
+    }
+
+    // 2. Fallback to localStorage
     const saved = localStorage.getItem('splitbill_state');
     if (saved) {
       try {

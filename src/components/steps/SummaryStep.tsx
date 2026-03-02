@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, ChevronLeft, Plus, Share2, Download, AlertCircle, Pencil, Trash2, Check } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Plus, Share2, Download, AlertCircle, Pencil, Trash2, Check, Link as LinkIcon } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { encodeShareData } from '../../utils/shareUtils';
 import { ReceiptData, Person, Payment, ANIMALS } from '../../types';
 import {
   DndContext,
@@ -117,6 +118,45 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
   const hasUnassigned = bills.some(b => b.items.some(i => i.sharedBy.length === 0));
   const unassignedItemsCount = bills.reduce((acc, b) => acc + b.items.filter(i => i.sharedBy.length === 0).length, 0);
 
+  const [isCopied, setIsCopied] = React.useState(false);
+
+  const handleCopyLink = () => {
+    const payload = { bills, people, payments, totals };
+    const encoded = encodeShareData(payload);
+
+    // Get base URL without query params
+    const baseUrl = window.location.origin + window.location.pathname;
+    const shareUrl = `${baseUrl}?share=${encoded}`;
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      }).catch(err => {
+        console.error('Failed to copy', err);
+        alert('Gagal menyalin link.');
+      });
+    } else {
+      // Fallback for non-https / older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = shareUrl;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      } catch (err) {
+        console.error('Fallback copy failed', err);
+        alert('Gagal menyalin link. Pastikan copy manual dari URL jika perlu.');
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -176,12 +216,21 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
           <button
             onClick={handleDownload}
             className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors"
+            title="Download Gambar"
           >
             <Download size={18} />
           </button>
           <button
+            onClick={handleCopyLink}
+            className={`p-2 rounded-xl transition-colors ${isCopied ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200 dark:shadow-none' : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100'}`}
+            title={isCopied ? 'Tersalin!' : 'Salin Link Tagihan'}
+          >
+            {isCopied ? <Check size={18} /> : <LinkIcon size={18} />}
+          </button>
+          <button
             onClick={handleShare}
             className="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200 dark:shadow-none"
+            title="Bagikan Gambar"
           >
             <Share2 size={18} />
           </button>
@@ -255,8 +304,16 @@ export const SummaryStep: React.FC<SummaryStepProps> = ({
               >
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full ${person.color} flex items-center justify-center text-white font-bold text-xs shadow-inner`}>
-                      {getAnimalIcon(index)}
+                    <div className={`w-8 h-8 rounded-full ${person.color} flex items-center justify-center text-white font-bold text-xs shadow-inner relative overflow-hidden`}>
+                      <span
+                        className="absolute inset-0 flex items-center justify-center"
+                        style={{
+                          lineHeight: 1,
+                          fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"'
+                        }}
+                      >
+                        {getAnimalIcon(index)}
+                      </span>
                     </div>
                     <h3 className="font-bold text-sm text-gray-900 dark:text-white">{person.name}</h3>
                   </div>
