@@ -6,7 +6,7 @@ export const processReceipt = async (base64Data: string, mimeType: string, apiKe
   const ai = new GoogleGenAI({ apiKey });
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-3.1-flash-lite-preview',
     contents: [
       {
         inlineData: {
