@@ -1,12 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Item, ReceiptData } from "../types";
 import { generateId } from "../utils";
+import { GEMINI_MODEL } from "../constants";
 
 export const processReceipt = async (base64Data: string, mimeType: string, apiKey: string): Promise<ReceiptData> => {
   const ai = new GoogleGenAI({ apiKey });
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3.1-flash-lite-preview',
+    model: GEMINI_MODEL,
     contents: [
       {
         inlineData: {
@@ -67,7 +68,7 @@ export const processReceipt = async (base64Data: string, mimeType: string, apiKe
 
   const itemsWithIds: Item[] = parsedData.items.map((item: any) => ({
     id: generateId(),
-    name: item.name,
+    name: (item.name || '').toString().substring(0, 100).trim(),
     qty: item.qty || 1,
     price: item.price,
     sharedBy: [],
@@ -81,9 +82,9 @@ export const processReceipt = async (base64Data: string, mimeType: string, apiKe
     id: generateId(),
     name: parsedData.restaurantName || 'Nota Baru',
     items: itemsWithIds,
-    subtotal: subtotal,
-    tax: tax,
-    serviceCharge: serviceCharge,
-    total: parsedData.total || 0,
+    subtotal,
+    tax,
+    serviceCharge,
+    total: parsedData.total || (subtotal + tax + serviceCharge),
   };
 };
