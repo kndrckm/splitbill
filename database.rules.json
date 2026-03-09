@@ -3,7 +3,23 @@
         "sessions": {
             "$session_id": {
                 ".read": true,
-                ".write": true
+                "state": {
+                    ".write": true
+                },
+                "users": {
+                    "$uid": {
+                        ".write": true
+                    }
+                },
+                "updatedAt": {
+                    ".write": true
+                },
+                "lockedBy": {
+                    ".write": true
+                },
+                "createdAt": {
+                    ".write": "!data.exists()"
+                }
             }
         }
     }
