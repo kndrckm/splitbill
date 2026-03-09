@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ChevronRight, ChevronLeft, Trash2 } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { Person, Payment } from '../../types';
+import { generateId } from '../../utils';
 
 type PaymentsStepProps = {
   darkMode: boolean;
@@ -13,12 +14,11 @@ type PaymentsStepProps = {
   setStep: (step: any) => void;
   formatCurrency: (amount: number) => string;
   totalBill: number;
-  generateId: () => string;
   isInputDisabled?: boolean;
 };
 
 export const PaymentsStep: React.FC<PaymentsStepProps> = ({
-  darkMode, setDarkMode, people, payments, setPayments, setStep, formatCurrency, totalBill, generateId, isInputDisabled
+  darkMode, setDarkMode, people, payments, setPayments, setStep, formatCurrency, totalBill, isInputDisabled
 }) => {
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = Math.max(0, totalBill - totalPaid);
@@ -59,100 +59,66 @@ export const PaymentsStep: React.FC<PaymentsStepProps> = ({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <h3 className="text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider px-1">Tambah Pembayaran</h3>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              {people.map(person => (
-                <button
-                  key={person.id}
-                  disabled={isInputDisabled}
-                  onClick={() => {
-                    const amount = remaining > 0 ? remaining : 0;
-                    setPayments([...payments, { id: generateId(), personId: person.id, amount, note: 'Bayar' }]);
-                  }}
-                  className={`flex items-center space-x-2 p-2 rounded-xl border-2 transition-all active:scale-95 ${person.color.replace('bg-', 'border-').replace('500', '100')} dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed`}
-                >
-                  <div className={`w-6 h-6 rounded-full ${person.color} flex items-center justify-center text-white font-bold text-[10px]`}>
-                    {person.name.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="font-bold text-gray-700 dark:text-gray-300 text-xs truncate">{person.name}</span>
-                </button>
-              ))}
+        {payments.map((payment) => (
+          <div key={payment.id} className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between mb-3">
+              <select
+                value={payment.personId}
+                onChange={(e) => {
+                  if (isInputDisabled) return;
+                  setPayments(payments.map(p => p.id === payment.id ? { ...p, personId: e.target.value } : p));
+                }}
+                disabled={isInputDisabled}
+                className="font-bold text-gray-900 dark:text-white bg-transparent border-none outline-none text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {people.map(person => (
+                  <option key={person.id} value={person.id}>{person.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => {
+                  if (isInputDisabled) return;
+                  setPayments(payments.filter(p => p.id !== payment.id));
+                }}
+                disabled={isInputDisabled}
+                className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 size={16} />
+              </button>
             </div>
+            <input
+              type="number"
+              value={payment.amount || ''}
+              onChange={(e) => {
+                if (isInputDisabled) return;
+                setPayments(payments.map(p => p.id === payment.id ? { ...p, amount: parseFloat(e.target.value) || 0 } : p));
+              }}
+              disabled={isInputDisabled}
+              placeholder="Jumlah"
+              className="w-full text-2xl font-black text-gray-900 dark:text-white bg-transparent border-none outline-none placeholder-gray-300 dark:placeholder-gray-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            />
           </div>
-        </div>
+        ))}
 
-        <div className="space-y-2">
-          <h3 className="text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider px-1">Riwayat Pembayaran</h3>
-          {payments.length === 0 ? (
-            <div className="text-center py-6 text-gray-400 dark:text-gray-600 bg-white dark:bg-gray-900 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 text-xs">
-              Belum ada pembayaran tercatat.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {payments.map(payment => {
-                const person = people.find(p => p.id === payment.personId);
-                return (
-                  <div key={payment.id} className="bg-white dark:bg-gray-900 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-7 h-7 rounded-full ${person?.color} flex items-center justify-center text-white font-bold text-[10px]`}>
-                        {person?.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="font-bold text-gray-900 dark:text-white text-xs">{person?.name}</div>
-                        <input
-                          type="text"
-                          value={payment.note}
-                          disabled={isInputDisabled}
-                          onChange={(e) => {
-                            setPayments(payments.map(p => p.id === payment.id ? { ...p, note: e.target.value } : p));
-                          }}
-                          className="text-[10px] text-gray-400 dark:text-gray-500 bg-transparent focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400 disabled:opacity-50"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="text-right">
-                        <div className="flex items-center text-xs font-black text-gray-900 dark:text-white">
-                          <span className="text-[8px] mr-1">Rp.</span>
-                          <input
-                            type="number"
-                            value={payment.amount === 0 ? '' : payment.amount}
-                            disabled={isInputDisabled}
-                            placeholder="0"
-                            onFocus={(e) => { if (payment.amount === 0) e.target.select(); }}
-                            onChange={(e) => {
-                              setPayments(payments.map(p => p.id === payment.id ? { ...p, amount: parseFloat(e.target.value) || 0 } : p));
-                            }}
-                            className="bg-transparent w-16 text-right focus:outline-none focus:text-indigo-500 dark:focus:text-indigo-400 disabled:opacity-50"
-                          />
-                        </div>
-                      </div>
-                      {!isInputDisabled && (
-                        <button
-                          onClick={() => setPayments(payments.filter(p => p.id !== payment.id))}
-                          className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors p-1"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <button
+          onClick={() => {
+            if (isInputDisabled) return;
+            const defaultPersonId = people[0]?.id || '';
+            setPayments([...payments, { id: generateId(), personId: defaultPersonId, amount: 0, note: '' }]);
+          }}
+          disabled={isInputDisabled}
+          className="w-full py-3 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 font-bold text-sm hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          + Tambah Pembayaran
+        </button>
       </div>
 
-      <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
+      <div className="p-4">
         <button
           onClick={() => setStep('SUMMARY')}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-lg shadow-indigo-200 dark:shadow-none"
+          className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-black text-base flex items-center justify-center gap-2 shadow-lg"
         >
-          <span>Lihat Hasil Akhir</span>
-          <ChevronRight size={20} />
+          Lihat Ringkasan <ChevronRight size={20} />
         </button>
       </div>
     </motion.div>
