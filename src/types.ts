@@ -1,7 +1,5 @@
 export type Step = 'UPLOAD' | 'BILL_NAME' | 'CAMERA' | 'PROCESSING' | 'ASSIGN_ITEMS' | 'TAX_SERVICE' | 'PAYMENTS' | 'SUMMARY' | 'RESTORE';
 
-export type DistributionMode = 'PROPORTIONAL' | 'EQUAL';
-
 export type Person = {
   id: string;
   name: string;
@@ -34,9 +32,10 @@ export type Payment = {
   note: string;
 };
 
-export const COLORS = [
-  'bg-indigo-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500', 
-  'bg-violet-500', 'bg-cyan-500', 'bg-orange-500', 'bg-fuchsia-500'
-];
-
-export const ANIMALS = ['🐶', '🐱', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗', '🕷', '🕸', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🐐', '🦌', '🐕', '🐩', '🦮', '🐕‍🦺', '🐈', '🐓', '🦃', '🦚', '🦜', '🦢', '🦩', '🕊', '🐇', '🦝', '🦨', '🦡', '🦦', '🦥', '🐁', '🐀', '🐿', '🦔'];
+export interface AppState {
+  bills: ReceiptData[];
+  people: Person[];
+  payments: Payment[];
+  currentBillId: string | null;
+  step: Step;
+}
