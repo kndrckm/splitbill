@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { ref, onValue, set, onDisconnect, serverTimestamp } from 'firebase/database';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ref, onValue, set, remove, onDisconnect, serverTimestamp } from 'firebase/database';
 import { database } from '../firebase';
 import { generateId } from '../utils';
+import { AppState } from '../types';
 
-export function useSharedSession(currentState: any) {
+export function useSharedSession(currentState: AppState) {
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [clientId] = useState(() => {
         let saved = localStorage.getItem('splitbill_uid');
@@ -16,8 +17,11 @@ export function useSharedSession(currentState: any) {
     const [isConnected, setIsConnected] = useState(false);
     const [lockedBy, setLockedBy] = useState<string | null>(null);
     const [activeUsers, setActiveUsers] = useState<{ uid: string, name: string, color: string }[]>([]);
+    const [incomingState, setIncomingState] = useState<AppState | null>(null);
+    const [sessionNotFound, setSessionNotFound] = useState(false);
 
-    const onUpdateRef = useRef<((state: any) => void) | null>(null);
+    const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isCreator = useRef(false);
 
     // Parse session from URL on load
     useEffect(() => {
@@ -44,129 +48,174 @@ export function useSharedSession(currentState: any) {
         }
     }, [sessionId]);
 
-    // Sync with Firebase
+    // Listen: session state (other user's edits)
     useEffect(() => {
         if (!sessionId) return;
+        const stateRef = ref(database, `sessions/${sessionId}/state`);
+        const unsub = onValue(stateRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data && lockedBy && lockedBy !== clientId) {
+                setIncomingState(data as AppState);
+            }
+        });
+        return () => unsub();
+    }, [sessionId, clientId, lockedBy]);
 
-        const sessionRef = ref(database, `sessions/${sessionId}`);
-        const lockRef = ref(database, `sessions/${sessionId}/lockedBy`);
-
-        // Setup disconnect hook to release lock
-        onDisconnect(lockRef).remove();
-
-        const unsubscribe = onValue(sessionRef, (snapshot) => {
+    // Listen: users presence
+    useEffect(() => {
+        if (!sessionId) return;
+        const usersRef = ref(database, `sessions/${sessionId}/users`);
+        const unsub = onValue(usersRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                if (data.createdAt && typeof data.createdAt === 'number') {
-                    const ageMs = Date.now() - data.createdAt;
+                setActiveUsers(Object.values(data) as { uid: string, name: string, color: string }[]);
+            }
+        });
+        return () => unsub();
+    }, [sessionId]);
+
+    // Listen: lockedBy + session existence
+    useEffect(() => {
+        if (!sessionId) return;
+        const lockRef = ref(database, `sessions/${sessionId}/lockedBy`);
+        const metaRef = ref(database, `sessions/${sessionId}/createdAt`);
+
+        // Check if session exists
+        const unsubMeta = onValue(metaRef, (snapshot) => {
+            if (!snapshot.exists() && !isCreator.current) {
+                setSessionNotFound(true);
+                setIsConnected(false);
+            } else if (snapshot.exists()) {
+                // Check expiry (24h)
+                const createdAt = snapshot.val();
+                if (typeof createdAt === 'number') {
+                    const ageMs = Date.now() - createdAt;
                     if (ageMs > 24 * 60 * 60 * 1000) {
-                        set(sessionRef, null);
-                        alert('Sesi ini sudah lebih dari 24 jam dan telah dihapus dari cloud demi keamanan.');
-                        window.location.href = window.location.pathname;
+                        setSessionNotFound(true);
+                        setIsConnected(false);
                         return;
                     }
                 }
-
                 setIsConnected(true);
-                setLockedBy(data.lockedBy || null);
-
-                // If someone else is locking it, or no one is locking it, consume their state
-                if (data.lockedBy !== clientId) {
-                    if (onUpdateRef.current && data.state) {
-                        onUpdateRef.current(data.state);
-                    }
-                }
-            } else {
-                // If data is suddenly null (wiped by owner or expired)
-                if (isConnected) {
-                    alert('Sesi ini telah dihapus atau kedaluwarsa.');
-                    window.location.href = window.location.pathname;
-                }
+                setSessionNotFound(false);
             }
         });
 
-        // Sync Presence
-        const presenceListRef = ref(database, `sessions/${sessionId}/presence`);
-        const unsubPresence = onValue(presenceListRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                const users = Object.entries(data).map(([uid, val]: any) => ({
-                    uid,
-                    name: val.name,
-                    color: val.color
-                }));
-                setActiveUsers(users);
-            } else {
-                setActiveUsers([]);
-            }
+        const unsubLock = onValue(lockRef, (snapshot) => {
+            setLockedBy(snapshot.val() || null);
         });
+
+        // Release lock on disconnect
+        onDisconnect(lockRef).remove();
 
         return () => {
-            unsubscribe();
-            unsubPresence();
-            onDisconnect(lockRef).cancel(); // cleanup
+            unsubMeta();
+            unsubLock();
         };
-    }, [sessionId, clientId]);
+    }, [sessionId]);
 
-    // Publish state when WE hold the lock
+    // Push state to Firebase (debounced 400ms), strip receiptImage from bills
     useEffect(() => {
-        if (sessionId && lockedBy === clientId) {
+        if (!sessionId || !isConnected) return;
+        if (lockedBy && lockedBy !== clientId) return;
+
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        debounceTimer.current = setTimeout(() => {
+            // Strip image data before writing to Firebase
+            const sanitizedState: AppState = {
+                ...currentState,
+                bills: currentState.bills.map(b => {
+                    const { image: _image, ...rest } = b as any;
+                    return rest;
+                }),
+            };
+
             const stateRef = ref(database, `sessions/${sessionId}/state`);
-            set(stateRef, currentState);
-        }
-    }, [currentState, sessionId, lockedBy, clientId]);
+            const updatedAtRef = ref(database, `sessions/${sessionId}/updatedAt`);
+            set(stateRef, sanitizedState);
+            set(updatedAtRef, serverTimestamp());
+        }, 400);
 
-    const createSession = async () => {
+        return () => {
+            if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        };
+    }, [currentState, sessionId, isConnected, lockedBy, clientId]);
+
+    const createSession = async (initialState: AppState, personName: string, personColor: string) => {
         const newSessionId = generateId();
+        isCreator.current = true;
+
+        const sanitizedState: AppState = {
+            ...initialState,
+            bills: initialState.bills.map(b => {
+                const { image: _image, ...rest } = b as any;
+                return rest;
+            }),
+        };
+
         const sessionRef = ref(database, `sessions/${newSessionId}`);
-
         await set(sessionRef, {
-            createdAt: serverTimestamp(),
+            state: sanitizedState,
             lockedBy: clientId,
-            state: currentState
+            createdAt: Date.now(),
+            updatedAt: serverTimestamp(),
+            users: {
+                [clientId]: { uid: clientId, name: personName, color: personColor }
+            }
         });
-
-        // Update URL
+        setSessionId(newSessionId);
+        setIsConnected(true);
         const url = new URL(window.location.href);
         url.searchParams.set('session', newSessionId);
         window.history.pushState({}, '', url);
-
-        setSessionId(newSessionId);
+        return newSessionId;
     };
 
-    const takeLock = () => {
+    const joinSession = async (targetSessionId: string, personName: string, personColor: string) => {
+        const userRef = ref(database, `sessions/${targetSessionId}/users/${clientId}`);
+        await set(userRef, { uid: clientId, name: personName, color: personColor });
+        setSessionId(targetSessionId);
+        const url = new URL(window.location.href);
+        url.searchParams.set('session', targetSessionId);
+        window.history.pushState({}, '', url);
+    };
+
+    const joinSessionPresence = async (personName: string, personColor: string) => {
+        if (!sessionId) return;
+        const userRef = ref(database, `sessions/${sessionId}/users/${clientId}`);
+        await set(userRef, { uid: clientId, name: personName, color: personColor });
+        onDisconnect(userRef).remove();
+    };
+
+    const releaseLock = async () => {
         if (!sessionId) return;
         const lockRef = ref(database, `sessions/${sessionId}/lockedBy`);
-        set(lockRef, clientId);
+        await remove(lockRef);
     };
 
-    const releaseLock = () => {
+    const acquireLock = async () => {
         if (!sessionId) return;
         const lockRef = ref(database, `sessions/${sessionId}/lockedBy`);
-        set(lockRef, null);
+        await set(lockRef, clientId);
     };
 
-    const joinSessionPresence = (name: string, color: string) => {
-        if (!sessionId) return;
-        const presenceRef = ref(database, `sessions/${sessionId}/presence/${clientId}`);
-        set(presenceRef, { name, color, lastSeen: serverTimestamp() });
-        onDisconnect(presenceRef).remove();
-    };
+    const isLockedByMe = lockedBy === clientId;
+    const isLockedByOther = !!lockedBy && lockedBy !== clientId;
 
     return {
         sessionId,
         clientId,
         isConnected,
         lockedBy,
-        isLockedByMe: lockedBy === clientId,
-        isLockedByOther: lockedBy !== null && lockedBy !== clientId,
-        createSession,
-        takeLock,
-        releaseLock,
-        joinSessionPresence,
+        isLockedByMe,
+        isLockedByOther,
         activeUsers,
-        setOnStateUpdate: (callback: (state: any) => void) => {
-            onUpdateRef.current = callback;
-        }
+        incomingState,
+        sessionNotFound,
+        createSession,
+        joinSession,
+        joinSessionPresence,
+        releaseLock,
+        acquireLock,
     };
 }
