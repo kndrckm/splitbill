@@ -1,14 +1,18 @@
 /**
  * Generate a cryptographically secure unique ID.
  * Uses crypto.randomUUID() which is available in all modern browsers.
+ * Returns the full UUID (no truncation) to guarantee uniqueness.
  */
 export const generateId = (): string => {
-    return crypto.randomUUID().replace(/-/g, '').substring(0, 12);
+    return crypto.randomUUID();
 };
 
 /**
  * Get the Gemini API key.
  * Priority: 1) localStorage (user override) → 2) build-time injected key from GitHub Secrets
+ *
+ * WARNING: Never store a high-billing production key here.
+ * Keys saved to localStorage are accessible to any JS running on this origin.
  */
 export const getApiKey = (): string | null => {
     const localKey = localStorage.getItem('splitbill_gemini_api_key');
@@ -23,6 +27,8 @@ export const getApiKey = (): string | null => {
 
 /**
  * Save the Gemini API key to localStorage (user override).
+ * WARNING: localStorage is accessible to any script on this origin.
+ * Do not save a key with active billing on shared devices.
  */
 export const setApiKey = (key: string): void => {
     localStorage.setItem('splitbill_gemini_api_key', key);
