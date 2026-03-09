@@ -1,14 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import html2canvas from 'html2canvas';
-import { AnimatePresence } from 'motion/react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useBillSplit } from './hooks/useBillSplit';
 import { processReceipt } from './services/aiService';
-import { generateId, getApiKey } from './utils';
-import { decodeShareData } from './utils/shareUtils';
-import { COLORS, Step } from './types';
-import { AlertCircle, Check, Share2 } from 'lucide-react';
+import { getApiKey } from './utils';
+import { renderSummaryCanvas } from './utils/shareUtils';
+import { AppState } from './types';
 
-// Steps
+// Step components
 import { UploadStep } from './components/steps/UploadStep';
 import { BillNameStep } from './components/steps/BillNameStep';
 import { CameraStep } from './components/steps/CameraStep';
@@ -19,10 +17,8 @@ import { PaymentsStep } from './components/steps/PaymentsStep';
 import { SummaryStep } from './components/steps/SummaryStep';
 import { RestoreStep } from './components/steps/RestoreStep';
 
-// UI
-import { ShareableView } from './components/ui/ShareableView';
+// UI components
 import { ApiKeyModal } from './components/ui/ApiKeyModal';
-import { UsernameModal } from './components/ui/UsernameModal';
 
 export default function App() {
   const {
@@ -30,547 +26,322 @@ export default function App() {
     receiptImage, setReceiptImage,
     bills, setBills,
     currentBillId, setCurrentBillId,
+    currentBill,
     people, setPeople,
     payments, setPayments,
     taxPercentage, setTaxPercentage,
     servicePercentage, setServicePercentage,
     darkMode, setDarkMode,
-    currentBill,
+    handleImageUpload,
+    handleProcessingComplete,
+    handleReset,
     formatCurrency,
     calculatePersonTotals,
-    sharedSession
+    sharedSession,
   } = useBillSplit();
 
-  const { isLockedByOther, isLockedByMe, isConnected, sessionId, lockedBy } = sharedSession;
-  const isInputDisabled = isLockedByOther;
-
-  const [newPersonName, setNewPersonName] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [processingError, setProcessingError] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [pendingState, setPendingState] = useState<any>(null);
-  const [previousStep, setPreviousStep] = useState<Step | null>(null);
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [showUsernameModal, setShowUsernameModal] = useState(false);
-  const [pendingImageDataUrl, setPendingImageDataUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (sessionId && isConnected) {
-      const savedName = localStorage.getItem('splitbill_username');
-      const savedColor = localStorage.getItem('splitbill_color');
-      if (savedName && savedColor) {
-        sharedSession.joinSessionPresence(savedName, savedColor);
-      } else {
-        setShowUsernameModal(true);
-      }
-    }
-  }, [sessionId, isConnected]);
-
-  const handleSaveUsername = (name: string, color: string) => {
-    localStorage.setItem('splitbill_username', name);
-    localStorage.setItem('splitbill_color', color);
-    sharedSession.joinSessionPresence(name, color);
-    setShowUsernameModal(false);
-  };
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const shareRef = useRef<HTMLDivElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  const handleSetStep = (newStep: any) => {
-    setPreviousStep(step);
-    setStep(newStep);
-  };
-
-  const handleBillNameBack = () => {
-    if (previousStep === 'SUMMARY') {
-      setStep('SUMMARY');
-    } else {
-      if (window.confirm('Keluar dari sesi ini? Data yang belum tersimpan mungkin hilang.')) {
-        setStep('UPLOAD');
-      }
-    }
-  };
-
+  // Dark mode class on root
   useEffect(() => {
-    // 1. Try to load from URL share link
-    const queryParams = new URLSearchParams(window.location.search);
-    const shareData = queryParams.get('share');
+    if (darkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  }, [darkMode]);
 
-    if (shareData) {
-      const decoded = decodeShareData(shareData);
-      if (decoded && decoded.bills && decoded.people) {
-        setBills(decoded.bills);
-        setPeople(decoded.people);
-        if (decoded.payments) setPayments(decoded.payments);
-
-        // Clean up URL to hide the long base64 string
-        window.history.replaceState({}, document.title, window.location.pathname);
-
-        setStep('SUMMARY');
-        setIsInitialized(true);
-        return;
-      }
-    }
-
-    // 2. Try to load from session parameter
-    if (queryParams.get('session')) {
-      setStep('SUMMARY');
-      setIsInitialized(true);
-      return;
-    }
-
-    // 3. Fallback to localStorage
-    const saved = localStorage.getItem('splitbill_state');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.bills && parsed.bills.length > 0) {
-          setPendingState(parsed);
-          setStep('RESTORE');
-        } else {
-          setIsInitialized(true);
-        }
-      } catch (e) {
-        setIsInitialized(true);
-      }
-    } else {
-      setIsInitialized(true);
-    }
-  }, []);
-
-  // Auto-create session if bills exist but no session ID is present
-  useEffect(() => {
-    if (bills.length > 0 && !sessionId) {
-      sharedSession.createSession();
-    }
-  }, [bills.length, sessionId]);
-
+  // -- Camera helpers ---------------------------------------------------------
   const startCamera = async () => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' }
       });
-      setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-      handleSetStep('CAMERA');
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setStep('CAMERA');
     } catch (err) {
-      setError('Gagal mengakses kamera.');
+      alert('Tidak bisa mengakses kamera. Pastikan izin kamera sudah diberikan.');
     }
   };
 
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-    handleSetStep('UPLOAD');
-  };
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    setStep('UPLOAD');
+  }, [setStep]);
 
-  const takePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg');
-        setReceiptImage(dataUrl);
-        stopCamera();
-        handleProcessReceipt(dataUrl);
-      }
-    }
-  };
+  const takePhoto = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d')!.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    stopCamera();
+    setReceiptImage(dataUrl);
+    setStep('PROCESSING');
+  }, [stopCamera, setReceiptImage, setStep]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        setReceiptImage(dataUrl);
-        handleProcessReceipt(dataUrl);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleProcessReceipt = async (dataUrl: string) => {
+  // -- AI processing ----------------------------------------------------------
+  const runProcessing = useCallback(async (imageDataUrl: string) => {
     const apiKey = getApiKey();
     if (!apiKey) {
-      // Save the pending image and show API key modal
-      setPendingImageDataUrl(dataUrl);
-      setShowApiKeyModal(true);
+      setIsApiKeyModalOpen(true);
       return;
     }
-
-    handleSetStep('PROCESSING');
-    setError(null);
+    setProcessingError(null);
+    setStep('PROCESSING');
     try {
-      const base64Data = dataUrl.split(',')[1];
-      const mimeType = dataUrl.split(';')[0].split(':')[1];
-
-      const parsedData = await processReceipt(base64Data, mimeType, apiKey);
-
-      let initialTaxPct = 0;
-      let initialServicePct = 0;
-      if (parsedData.subtotal > 0) {
-        initialTaxPct = (parsedData.tax / parsedData.subtotal) * 100;
-        initialServicePct = (parsedData.serviceCharge / parsedData.subtotal) * 100;
-      }
-
-      setTaxPercentage(initialTaxPct.toFixed(2));
-      setServicePercentage(initialServicePct.toFixed(2));
-      setBills(prev => [...prev, parsedData]);
-      setCurrentBillId(parsedData.id);
-
-      if (people.length === 0) {
-        setPeople([{ id: generateId(), name: 'Saya', color: COLORS[0] }]);
-      }
-      setReceiptImage(null); // free up memory
-      handleSetStep('BILL_NAME');
+      const [, base64] = imageDataUrl.split(',');
+      const mimeType = imageDataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+      const data = await processReceipt(base64, mimeType, apiKey);
+      handleProcessingComplete(data);
     } catch (err: any) {
-      setError(err.message || 'Gagal memproses nota. Periksa API key Anda.');
-      handleSetStep('UPLOAD');
+      setProcessingError(err?.message || 'Terjadi kesalahan saat membaca struk.');
     }
-  };
+  }, [setStep, handleProcessingComplete]);
 
-  const handleApiKeySaved = (key: string) => {
-    setShowApiKeyModal(false);
-    // If there was a pending image, process it now
-    if (pendingImageDataUrl) {
-      const dataUrl = pendingImageDataUrl;
-      setPendingImageDataUrl(null);
-      handleProcessReceipt(dataUrl);
+  // Run processing automatically when image is set and step is PROCESSING
+  useEffect(() => {
+    if (step === 'PROCESSING' && receiptImage && !processingError) {
+      runProcessing(receiptImage);
     }
-  };
+  }, [step, receiptImage]);
 
-  const handleManualInput = () => {
-    const billId = generateId();
-    const newBill = {
-      id: billId,
-      name: 'Nota Baru',
-      items: [],
-      subtotal: 0,
-      tax: 0,
-      serviceCharge: 0,
-      total: 0,
-    };
-    setBills(prev => [...prev, newBill]);
-    setCurrentBillId(billId);
-    if (people.length === 0) {
-      setPeople([{ id: generateId(), name: 'Saya', color: COLORS[0] }]);
-    }
-    handleSetStep('BILL_NAME');
-  };
-
-  const handleJoinSession = async (code: string) => {
-    if (!code.trim()) return;
-    setError(null);
-    try {
-      const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.set('session', code);
-      window.location.href = currentUrl.toString();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const addPerson = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPersonName.trim()) return;
-    const newPerson = { id: generateId(), name: newPersonName.trim(), color: COLORS[people.length % COLORS.length] };
-    setPeople([...people, newPerson]);
-    setNewPersonName('');
-  };
-
-  const removePerson = (id: string) => {
-    setPeople(people.filter(p => p.id !== id));
-    setBills(bills.map(bill => ({
-      ...bill,
-      items: bill.items.map(item => ({
-        ...item,
-        sharedBy: item.sharedBy.filter(personId => personId !== id)
-      }))
-    })));
-  };
-
-  const toggleItemShare = (itemId: string, personId: string) => {
-    if (!currentBillId) return;
-    setBills(bills.map(bill => {
-      if (bill.id === currentBillId) {
-        return {
-          ...bill,
-          items: bill.items.map(item => {
-            if (item.id === itemId) {
-              const isShared = item.sharedBy.includes(personId);
-              return {
-                ...item,
-                sharedBy: isShared ? item.sharedBy.filter(id => id !== personId) : [...item.sharedBy, personId]
-              };
-            }
-            return item;
-          })
-        };
-      }
-      return bill;
-    }));
-  };
-
-  const selectAllPeopleForItem = (itemId: string) => {
-    if (!currentBillId) return;
-    const allPersonIds = people.map(p => p.id);
-    setBills(bills.map(bill => {
-      if (bill.id === currentBillId) {
-        return {
-          ...bill,
-          items: bill.items.map(item => {
-            if (item.id === itemId) {
-              const isAllSelected = item.sharedBy.length === allPersonIds.length;
-              return { ...item, sharedBy: isAllSelected ? [] : [...allPersonIds] };
-            }
-            return item;
-          })
-        };
-      }
-      return bill;
-    }));
-  };
-
+  // -- Share / Download -------------------------------------------------------
   const handleShare = async () => {
-    if (!shareRef.current) return;
+    if (isSharing) return;
     setIsSharing(true);
     try {
-      const canvas = await html2canvas(shareRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-      if (blob && navigator.share) {
-        const file = new File([blob], 'splitbill-summary.png', { type: 'image/png' });
-        await navigator.share({ files: [file], title: 'SplitBill Summary', text: 'Ini rincian bagi tagihan kita!' });
-      } else if (blob) {
+      const totals = calculatePersonTotals();
+      const totalBill = bills.reduce((s, b) => s + b.total, 0);
+      const blob = await renderSummaryCanvas(totals, formatCurrency, totalBill);
+      const file = new File([blob], 'splitbill-summary.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Split Bill Summary' });
+      } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = 'splitbill-summary.png';
         a.click();
+        URL.revokeObjectURL(url);
       }
     } catch (err) {
-      console.error('Failed to share:', err);
-      setError('Gagal membagikan gambar.');
+      console.error('Share failed', err);
     } finally {
       setIsSharing(false);
     }
   };
 
-  const handleDownload = async () => {
-    if (!shareRef.current) return;
-    try {
-      const canvas = await html2canvas(shareRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-      const url = canvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'splitbill-summary.png';
-      a.click();
-    } catch (err) {
-      console.error('Failed to download:', err);
-      setError('Gagal mengunduh gambar.');
-    }
-  };
+  // -- Restore callbacks ------------------------------------------------------
+  const handleRestore = useCallback((state: AppState) => {
+    if (state.bills) setBills(state.bills);
+    if (state.people) setPeople(state.people);
+    if (state.payments) setPayments(state.payments);
+    if (state.currentBillId !== undefined) setCurrentBillId(state.currentBillId);
+    setStep(state.step || 'SUMMARY');
+  }, [setBills, setPeople, setPayments, setCurrentBillId, setStep]);
 
-  const totals = calculatePersonTotals();
-  const totalBill = bills.reduce((sum, b) => sum + b.total, 0);
+  // -- Computed ---------------------------------------------------------------
+  const personTotals = calculatePersonTotals();
+  const totalBill = bills.reduce((s, b) => s + b.total, 0);
+  const isInputDisabled = sharedSession.isLockedByOther;
+
+  // Pending state from localStorage for RestoreStep
+  const [pendingRestoreState, setPendingRestoreState] = useState<AppState | null>(null);
+  useEffect(() => {
+    if (step === 'RESTORE') {
+      try {
+        const saved = localStorage.getItem('splitbill_state');
+        if (saved) setPendingRestoreState(JSON.parse(saved));
+      } catch (e) { /* ignore */ }
+    }
+  }, [step]);
 
   return (
-    <div className="min-h-screen bg-gray-900 dark:bg-black flex justify-center font-sans overflow-hidden">
-      <div className="w-full max-w-md bg-white dark:bg-gray-950 h-screen shadow-2xl overflow-hidden relative flex flex-col">
-        { /* Shared Session Banner Display logic */}
-        {step !== 'RESTORE' && sessionId && (
-          <div className="w-full z-50">
-            <div className={`px-4 py-3 text-sm font-bold flex items-center justify-between ${isLockedByOther ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
-              <div className="flex items-center space-x-2">
-                {isLockedByOther ? <AlertCircle size={16} /> : <Check size={16} />}
-                <span>
-                  {isLockedByOther ? 'Orang lain sedang mengedit...' : 'Anda sedang mengedit.'} <span className="opacity-70 font-normal ml-1">({sessionId})</span>
-                </span>
-              </div>
-              {isLockedByOther ? (
-                <button onClick={sharedSession.takeLock} className="px-3 py-1 bg-amber-600 text-white rounded-lg text-xs shadow-sm ml-2 whitespace-nowrap active:scale-95 transition-transform">
-                  AMBIL ALIH
-                </button>
-              ) : (
-                <div className="flex space-x-2">
-                  <button onClick={() => {
-                    const url = window.location.href;
-                    navigator.clipboard.writeText(url);
-                    alert('Link sesi disalin: ' + url);
-                  }} className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs shadow-sm ml-2 whitespace-nowrap active:scale-95 transition-transform flex items-center gap-1">
-                    <Share2 size={12} /> Link
-                  </button>
-                  <button onClick={sharedSession.releaseLock} className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs shadow-sm whitespace-nowrap active:scale-95 transition-transform">
-                    LEPASKAN
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center`}>
+      <div className="w-full max-w-sm h-[100dvh] relative overflow-hidden bg-white dark:bg-gray-950 shadow-2xl">
 
-        <div className="flex-1 relative overflow-hidden flex flex-col">
-          <AnimatePresence mode="wait">
-            {step === 'RESTORE' && (
-              <RestoreStep
-                pendingState={pendingState}
-                setBills={setBills}
-                setPeople={setPeople}
-                setPayments={setPayments}
-                setStep={handleSetStep}
-                setCurrentBillId={setCurrentBillId}
-                setIsInitialized={setIsInitialized}
-              />
-            )}
-            {step === 'UPLOAD' && (
-              <UploadStep
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-                error={error}
-                startCamera={startCamera}
-                handleFileUpload={handleFileUpload}
-                handleManualInput={handleManualInput}
-                fileInputRef={fileInputRef}
-                handleJoinSession={handleJoinSession}
-                onOpenApiKeyModal={() => setShowApiKeyModal(true)}
-                isInputDisabled={isInputDisabled}
-                sessionId={sessionId}
-              />
-            )}
-            {step === 'BILL_NAME' && (
-              <BillNameStep
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-                currentBill={currentBill}
-                setBills={setBills}
-                bills={bills}
-                setStep={handleSetStep}
-                people={people}
-                setPeople={setPeople}
-                newPersonName={newPersonName}
-                setNewPersonName={setNewPersonName}
-                addPerson={addPerson}
-                removePerson={removePerson}
-                onBack={handleBillNameBack}
-                isInputDisabled={isInputDisabled}
-              />
-            )}
-            {step === 'CAMERA' && (
-              <CameraStep
-                videoRef={videoRef}
-                stopCamera={stopCamera}
-                takePhoto={takePhoto}
-              />
-            )}
-            {step === 'PROCESSING' && (
-              <ProcessingStep receiptImage={receiptImage} />
-            )}
-            {step === 'ASSIGN_ITEMS' && (
-              <AssignItemsStep
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-                currentBill={currentBill}
-                people={people}
-                setBills={setBills}
-                bills={bills}
-                setStep={handleSetStep}
-                formatCurrency={formatCurrency}
-                toggleItemShare={toggleItemShare}
-                selectAllPeopleForItem={selectAllPeopleForItem}
-                generateId={generateId}
-                isInputDisabled={isInputDisabled}
-              />
-            )}
-            {step === 'TAX_SERVICE' && (
-              <TaxServiceStep
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-                currentBill={currentBill}
-                setBills={setBills}
-                bills={bills}
-                setStep={handleSetStep}
-                formatCurrency={formatCurrency}
-                taxPercentage={taxPercentage}
-                setTaxPercentage={setTaxPercentage}
-                servicePercentage={servicePercentage}
-                setServicePercentage={setServicePercentage}
-                isInputDisabled={isInputDisabled}
-              />
-            )}
-            {step === 'PAYMENTS' && (
-              <PaymentsStep
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-                people={people}
-                payments={payments}
-                setPayments={setPayments}
-                setStep={handleSetStep}
-                formatCurrency={formatCurrency}
-                totalBill={totalBill}
-                generateId={generateId}
-                isInputDisabled={isInputDisabled}
-              />
-            )}
-            {step === 'SUMMARY' && (
-              <SummaryStep
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-                bills={bills}
-                people={people}
-                payments={payments}
-                setBills={setBills}
-                setPeople={setPeople}
-                setPayments={setPayments}
-                setStep={handleSetStep}
-                setCurrentBillId={setCurrentBillId}
-                formatCurrency={formatCurrency}
-                totalBill={totalBill}
-                totals={totals}
-                shareRef={shareRef}
-                handleShare={handleShare}
-                handleDownload={handleDownload}
-                isSharing={isSharing}
-                setTaxPercentage={setTaxPercentage}
-                setServicePercentage={setServicePercentage}
-                sessionId={sharedSession.sessionId}
-                isInputDisabled={isInputDisabled}
-                startCamera={startCamera}
-                handleFileUpload={handleFileUpload}
-                handleManualInput={handleManualInput}
-              />
-            )}
-          </AnimatePresence>
-        </div>
-        <canvas ref={canvasRef} className="hidden" />
-        <ShareableView
-          shareRef={shareRef}
-          bills={bills}
-          people={people}
-          totals={totals}
-          formatCurrency={formatCurrency}
-          totalBill={totalBill}
+        {/* Session Not Found Modal */}
+        <AnimatePresence>
+          {sharedSession.sessionNotFound && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-white dark:bg-gray-900 rounded-2xl p-6 space-y-4 shadow-2xl w-full max-w-xs"
+              >
+                <h3 className="font-black text-gray-900 dark:text-white text-lg">Sesi Tidak Ditemukan</h3>
+                <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
+                  Link sesi ini sudah kedaluwarsa atau tidak valid. Buat sesi baru untuk berbagi dengan teman.
+                </p>
+                <button
+                  onClick={() => {
+                    // Clear session param and reset
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('session');
+                    window.history.replaceState({}, '', url);
+                    handleReset();
+                  }}
+                  className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold"
+                >
+                  Mulai Baru
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* API Key Modal */}
+        <ApiKeyModal
+          isOpen={isApiKeyModalOpen}
+          onClose={() => setIsApiKeyModalOpen(false)}
+          onKeySaved={(key) => {
+            setIsApiKeyModalOpen(false);
+            if (receiptImage) runProcessing(receiptImage);
+          }}
         />
+
+        {/* Main step router */}
+        <AnimatePresence mode="wait">
+          {step === 'RESTORE' && (
+            <RestoreStep
+              key="restore"
+              pendingState={pendingRestoreState}
+              onRestore={handleRestore}
+              onReset={handleReset}
+            />
+          )}
+
+          {step === 'UPLOAD' && (
+            <UploadStep
+              key="upload"
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              onImageUpload={handleImageUpload}
+              onCameraOpen={startCamera}
+              onApiKeyOpen={() => setIsApiKeyModalOpen(true)}
+              bills={bills}
+              setStep={setStep}
+              sharedSession={sharedSession}
+              formatCurrency={formatCurrency}
+            />
+          )}
+
+          {step === 'BILL_NAME' && (
+            <BillNameStep
+              key="bill-name"
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              bills={bills}
+              setBills={setBills}
+              currentBillId={currentBillId}
+              setStep={setStep}
+              isInputDisabled={isInputDisabled}
+            />
+          )}
+
+          {step === 'CAMERA' && (
+            <CameraStep
+              key="camera"
+              videoRef={videoRef}
+              stopCamera={stopCamera}
+              takePhoto={takePhoto}
+            />
+          )}
+
+          {step === 'PROCESSING' && (
+            <ProcessingStep
+              key="processing"
+              receiptImage={receiptImage}
+              error={processingError}
+              onRetry={() => {
+                setProcessingError(null);
+                if (receiptImage) runProcessing(receiptImage);
+              }}
+            />
+          )}
+
+          {step === 'ASSIGN_ITEMS' && (
+            <AssignItemsStep
+              key="assign"
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              currentBill={currentBill}
+              setBills={setBills}
+              bills={bills}
+              people={people}
+              setPeople={setPeople}
+              setStep={setStep}
+              formatCurrency={formatCurrency}
+              isInputDisabled={isInputDisabled}
+            />
+          )}
+
+          {step === 'TAX_SERVICE' && (
+            <TaxServiceStep
+              key="tax"
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              currentBill={currentBill}
+              setBills={setBills}
+              bills={bills}
+              setStep={setStep}
+              formatCurrency={formatCurrency}
+              taxPercentage={taxPercentage}
+              setTaxPercentage={setTaxPercentage}
+              servicePercentage={servicePercentage}
+              setServicePercentage={setServicePercentage}
+              isInputDisabled={isInputDisabled}
+            />
+          )}
+
+          {step === 'PAYMENTS' && (
+            <PaymentsStep
+              key="payments"
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              people={people}
+              payments={payments}
+              setPayments={setPayments}
+              setStep={setStep}
+              formatCurrency={formatCurrency}
+              totalBill={totalBill}
+              isInputDisabled={isInputDisabled}
+            />
+          )}
+
+          {step === 'SUMMARY' && (
+            <SummaryStep
+              key="summary"
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              bills={bills}
+              people={people}
+              payments={payments}
+              personTotals={personTotals}
+              setStep={setStep}
+              formatCurrency={formatCurrency}
+              totalBill={totalBill}
+              onShare={handleShare}
+              isSharing={isSharing}
+              onReset={handleReset}
+              sharedSession={sharedSession}
+              isInputDisabled={isInputDisabled}
+            />
+          )}
+        </AnimatePresence>
       </div>
-      <ApiKeyModal
-        isOpen={showApiKeyModal}
-        onSave={handleApiKeySaved}
-        onClose={() => setShowApiKeyModal(false)}
-      />
-      <UsernameModal
-        isOpen={showUsernameModal}
-        onSave={handleSaveUsername}
-      />
     </div>
   );
 }
