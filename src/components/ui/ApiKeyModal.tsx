@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Key, ExternalLink, X, AlertCircle } from 'lucide-react';
+import { Key, ExternalLink, X, AlertCircle, ShieldAlert } from 'lucide-react';
 import { getApiKey, setApiKey, removeApiKey } from '../../utils';
 
 type ApiKeyModalProps = {
@@ -66,50 +66,62 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
                             </button>
                         </div>
 
-                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                            Untuk menggunakan fitur scan nota, Anda memerlukan API key Gemini. Key disimpan hanya di browser Anda dan tidak dikirim ke server mana pun.
+                        {/* Security warning banner */}
+                        <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
+                            <ShieldAlert size={15} className="text-amber-500 mt-0.5 shrink-0" />
+                            <p className="text-amber-700 dark:text-amber-400 text-xs leading-relaxed">
+                                Key disimpan hanya di browser ini. Jangan gunakan key billing aktif di perangkat bersama.
+                            </p>
+                        </div>
+
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Masukkan Gemini API key kamu untuk mengaktifkan fitur scan struk otomatis.
                         </p>
 
+                        <div className="space-y-2">
+                            <input
+                                type="password"
+                                value={inputKey}
+                                onChange={(e) => {
+                                    setInputKey(e.target.value);
+                                    setError(null);
+                                }}
+                                placeholder="AIza..."
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-400"
+                            />
+                            {error && (
+                                <div className="flex items-center gap-2 text-red-500 text-xs">
+                                    <AlertCircle size={14} />
+                                    <span>{error}</span>
+                                </div>
+                            )}
+                        </div>
+
                         <a
-                            href="https://aistudio.google.com/apikey"
+                            href="https://aistudio.google.com/app/apikey"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center space-x-2 text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+                            className="flex items-center gap-2 text-indigo-500 dark:text-indigo-400 text-xs font-medium hover:underline"
                         >
                             <ExternalLink size={12} />
-                            <span>Dapatkan API Key di Google AI Studio</span>
+                            Dapatkan API key gratis di Google AI Studio
                         </a>
 
-                        {error && (
-                            <div className="flex items-center space-x-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-xl text-xs">
-                                <AlertCircle size={14} />
-                                <span>{error}</span>
-                            </div>
-                        )}
-
-                        <input
-                            type="password"
-                            value={inputKey}
-                            onChange={(e) => { setInputKey(e.target.value); setError(null); }}
-                            placeholder="AIzaSy..."
-                            className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 focus:border-indigo-500 dark:focus:border-indigo-600 py-3 px-4 rounded-xl text-sm font-mono text-gray-900 dark:text-white focus:outline-none transition-all"
-                        />
-
-                        <div className="flex space-x-2">
-                            <button
-                                onClick={handleSave}
-                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all active:scale-95 text-sm shadow-lg shadow-indigo-200 dark:shadow-none"
-                            >
-                                Simpan & Lanjut
-                            </button>
+                        <div className="flex gap-2 pt-2">
                             {getApiKey() && (
                                 <button
                                     onClick={handleRemove}
-                                    className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-bold py-3 px-4 rounded-xl transition-all active:scale-95 text-sm"
+                                    className="flex-1 py-2.5 rounded-xl border border-red-200 dark:border-red-800 text-red-500 font-bold text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                 >
-                                    Hapus
+                                    Hapus Key
                                 </button>
                             )}
+                            <button
+                                onClick={handleSave}
+                                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-colors"
+                            >
+                                Simpan
+                            </button>
                         </div>
                     </motion.div>
                 </motion.div>
