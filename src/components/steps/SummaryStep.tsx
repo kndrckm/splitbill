@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ChevronLeft, Plus, Share2, Download, AlertCircle, Pencil, Trash2, Check, Link as LinkIcon, Copy, X, Camera, Upload } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { encodeShareData } from '../../utils/shareUtils';
-import { ReceiptData, Person, Payment, ANIMALS } from '../../types';
+import { ReceiptData, Person, Payment } from '../../types';
+import { ANIMALS } from '../../constants';
 import {
   DndContext,
   closestCenter,
